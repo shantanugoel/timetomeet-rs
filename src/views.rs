@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, TimeZone};
 use chrono_tz::Tz;
-use yew::{prelude::*, services::ConsoleService, Html};
+use yew::{prelude::*, Html};
 
 use crate::model::{Model, Msg};
 
