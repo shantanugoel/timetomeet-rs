@@ -46,7 +46,7 @@ pub fn main_view(model: &Model) -> Html {
                 </ul>
             </div>
             <div class="one-third column">
-                <h4> {"1. Pick the date"} </h4>
+                <h4> {"1. Pick the meeting date"} </h4>
                 <input class="u-full-width" type="date" onchange=model.link.callback(Msg::DatePick)/>
                 <h4> {"2. Search for cities"} </h4>
                 <input class="u-full-width" placeholder="Enter city name to search/add" type="search" oninput=model.link.callback(Msg::CityInput)/>
