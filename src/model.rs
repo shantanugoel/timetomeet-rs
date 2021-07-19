@@ -11,16 +11,17 @@ pub enum Msg {
     CityInput(InputData),
 }
 
-#[derive(Default, Properties, Clone, PartialEq)]
+#[derive(Debug, Default, Properties, Clone, PartialEq)]
 pub struct ModelProps {
     #[prop_or_default]
     pub ref_date: Date,
     #[prop_or(vec![String::from_str("Bengaluru,IN,Asia/Kolkata").unwrap(),
      String::from_str("Mountain View,US,America/Los_Angeles").unwrap()])]
-    pub current_results: Vec<String>,
+    pub search_results: Vec<String>,
+    pub selected_cities: Vec<String>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Date(pub NaiveDate);
 
 impl Default for Date {
@@ -63,7 +64,7 @@ impl Component for Model {
             },
 
             Msg::CityInput(city_partial) => {
-                self.props.current_results.clear();
+                self.props.search_results.clear();
                 let results: Vec<String> = self
                     .tz_db
                     .search(city_partial.value.as_ref())
@@ -71,7 +72,7 @@ impl Component for Model {
                     .take(5)
                     .map(|s| s.clone())
                     .collect();
-                self.props.current_results.extend(results);
+                self.props.search_results.extend(results);
                 return true;
             }
         }
@@ -83,6 +84,12 @@ impl Component for Model {
     }
 
     fn view(&self) -> yew::Html {
+        ConsoleService::log("viewing");
+        let x = self.props.search_results.clone();
+        for y in x {
+            ConsoleService::log(y.as_ref());
+        }
+        ConsoleService::log("viewing done");
         main_view(self)
     }
 }
