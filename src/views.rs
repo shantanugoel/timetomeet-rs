@@ -65,7 +65,7 @@ pub fn main_view(model: &Model) -> Html {
             <thead>
             <tr>
             {
-            for cities.iter().map(|city| {html! {<th> {city} </th>} })
+            for cities.iter().map(|city| {html! {<th> {city} <sup><a href="#">{"x"}</a></sup></th>} })
             }
             </tr>
             </thead>
