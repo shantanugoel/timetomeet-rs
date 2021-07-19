@@ -21,7 +21,7 @@ pub fn main_view(model: &Model) -> Html {
 
     html! {
     <div>
-        <input type="date" onchange=model.link.callback(|x| Msg::DatePick(x))/>
+        <input type="date" onchange=model.link.callback(Msg::DatePick)/>
         <table>
         <thead>
         <tr>
@@ -40,7 +40,7 @@ pub fn main_view(model: &Model) -> Html {
                 </tr>}})
         }
         </table>
-        <input oninput=model.link.callback(|x| Msg::CityInput(x))/>
+        <input oninput=model.link.callback(Msg::CityInput)/>
         {
             for model.props.search_results.clone().into_iter().map(|s| {html!{
                 <p> {s } </p>

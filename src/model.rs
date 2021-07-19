@@ -48,9 +48,7 @@ impl Component for Model {
             tz_db.insert(line.to_string(), line);
         }
 
-        let model = Self { link, tz_db, props };
-
-        model
+        Self { link, tz_db, props }
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
@@ -70,7 +68,7 @@ impl Component for Model {
                     .search(city_partial.value.as_ref())
                     .iter()
                     .take(5)
-                    .map(|s| s.clone())
+                    .cloned()
                     .collect();
                 self.props.search_results.extend(results);
                 return true;
