@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, TimeZone};
 use chrono_tz::Tz;
-use yew::{prelude::*, Html};
+use yew::{prelude::*, services::ConsoleService, Html};
 
 use crate::model::{Model, Msg};
 
@@ -53,8 +53,8 @@ pub fn main_view(model: &Model) -> Html {
             <div class="one-third column">
                 <h4> {"3. Add to table"} </h4>
                 {
-                    for model.props.search_results.clone().into_iter().map(|s| {html!{
-                        <button class="button-primary"> {s } </button>
+                    for model.props.search_results.clone().into_iter().map(|s| {let y = s.clone(); html!{
+                        <input type="button" class="button-primary" value={s} onclick=model.link.callback(move |_| {Msg::CityAdd(y.clone())}) />
                     }})
                 }
             </div>

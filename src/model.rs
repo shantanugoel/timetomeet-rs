@@ -9,6 +9,8 @@ use crate::{utils::today, views::main_view};
 pub enum Msg {
     DatePick(ChangeData),
     CityInput(InputData),
+    CityAdd(String),
+    CityRemove(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,11 +63,12 @@ impl Component for Model {
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
+        let mut result = false;
         match msg {
             Msg::DatePick(d) => match d {
                 ChangeData::Value(date_string) => {
                     self.props.ref_date = NaiveDate::from_str(date_string.as_str()).unwrap();
-                    return true;
+                    result = true;
                 }
                 _ => ConsoleService::log("Incorrect message type received while picking date"),
             },
@@ -80,10 +83,27 @@ impl Component for Model {
                     .cloned()
                     .collect();
                 self.props.search_results.extend(results);
-                return true;
+                result = true;
+            }
+
+            Msg::CityAdd(data) => {
+                let existing_index = self.props.selected_cities.iter().position(|x| x.eq(&data));
+                if existing_index.is_none() {
+                    self.props.selected_cities.push(data);
+                }
+                result = true
+            }
+
+            Msg::CityRemove(data) => {
+                let existing_index = self.props.selected_cities.iter().position(|x| x.eq(&data));
+                if existing_index.is_some() {
+                    self.props.selected_cities.remove(existing_index.unwrap());
+                }
+                result = true
             }
         }
-        false
+
+        result
     }
 
     fn change(&mut self, _props: Self::Properties) -> yew::ShouldRender {
