@@ -29,16 +29,32 @@ pub fn main_view(model: &Model) -> Html {
     html! {
     <div class="container">
         <div class="row">
-            <div class="four columns">
+            <center><h1>{ "Find the best time to meet across timezones"}</h1></center>
+        </div>
+        <div class="row">
+            <div class="one-third column">
+            <ul>
+                <li> {"How to use this:"}
+                    <ul>
+                        <li> {"Pick the meeting date. Table will auto update whenever a new date is picked."} </li>
+                        <li> {"Search for a city. Results appear as buttons on right as you search. This can be repeated as many times as needed."} </li>
+                        <li> {"Click on a city name to add it to the table. This can be repeated as many times as needed."} </li>
+                        <li> {"Click on the `x` near a city name in the table header to remove it from the table."} </li>
+                    </ul>
+                </li>
+            </ul>
+            </div>
+            <div class="one-third column">
+                <h4> {"1. Pick the date"} </h4>
                 <input class="u-full-width" type="date" onchange=model.link.callback(Msg::DatePick)/>
+                <h4> {"2. Search for cities"} </h4>
+                <input class="u-full-width" placeholder="Enter city name to search/add" type="search" oninput=model.link.callback(Msg::CityInput)/>
             </div>
-            <div class="four columns">
-                <input class="u-full-width" oninput=model.link.callback(Msg::CityInput)/>
-            </div>
-            <div class="four columns">
+            <div class="one-third column">
+                <h4> {"3. Add to table"} </h4>
                 {
                     for model.props.search_results.clone().into_iter().map(|s| {html!{
-                        <p> {s } </p>
+                        <button class="button-primary"> {s } </button>
                     }})
                 }
             </div>

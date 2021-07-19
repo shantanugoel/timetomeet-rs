@@ -22,10 +22,18 @@ impl Default for ModelProps {
     fn default() -> Self {
         ModelProps {
             ref_date: NaiveDate::from_str(today().as_str()).unwrap(),
-            search_results: Vec::new(),
+            search_results: vec![
+                String::from_str("New Delhi,IN,Asia/Kolkata").unwrap(),
+                String::from_str("Seattle,US,America/Los_Angeles").unwrap(),
+                String::from_str("New York City,US,America/New_York").unwrap(),
+                String::from_str("London,GB,Europe/London").unwrap(),
+                String::from_str("Sydney,AU,Australia/Sydney").unwrap(),
+            ],
             selected_cities: vec![
                 String::from_str("Bengaluru,IN,Asia/Kolkata").unwrap(),
                 String::from_str("Mountain View,US,America/Los_Angeles").unwrap(),
+                String::from_str("Shanghai,CN,Asia/Shanghai").unwrap(),
+                String::from_str("Singapore,SG,Asia/Singapore").unwrap(),
             ],
         }
     }
