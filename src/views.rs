@@ -29,7 +29,10 @@ pub fn main_view(model: &Model) -> Html {
     html! {
     <div class="container">
         <div class="row">
-            <center><h1>{ "Find the best time to meet across timezones"}</h1></center>
+            <center><h1>{ "Find the best time to meet across timezones"}</h1>
+            <p>{"Built with 💪 of Rust and 💗 of "} <a href="https://twitter.com/shantanugoel">{"shantanugoel"}</a>
+             {" ("} <a href="https://github.com/shantanugoel/timetomeet-rs">{"Source Code"}</a> {")"}</p>
+            </center>
         </div>
         <div class="row">
             <div class="one-third column">
