@@ -51,7 +51,7 @@ pub fn main_view(model: &Model) -> Html {
                 <input class="u-full-width" placeholder="Enter city name to search/add" type="search" oninput=model.link.callback(Msg::CityInput)/>
             </div>
             <div class="one-third column">
-                <h4> {"3. Add to table"} </h4>
+                <h4> {"3. Click to add"} </h4>
                 {
                     for model.props.search_results.clone().into_iter().map(|s| {let y = s.clone(); html!{
                         <input type="button" class="button-primary" value={s} onclick=model.link.callback(move |_| {Msg::CityAdd(y.clone())}) />
