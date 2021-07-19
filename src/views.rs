@@ -27,32 +27,44 @@ pub fn main_view(model: &Model) -> Html {
     let hours_range = 0..24;
 
     html! {
-    <div>
-        <input type="date" onchange=model.link.callback(Msg::DatePick)/>
-        <table>
-        <thead>
-        <tr>
-        {
-        for cities.iter().map(|city| {html! {<th> {city} </th>} })
-        }
-        </tr>
-        </thead>
-        {
-            for hours_range.map(|x| {html! {<tr>
+    <div class="container">
+        <div class="row">
+            <div class="four columns">
+                <input class="u-full-width" type="date" onchange=model.link.callback(Msg::DatePick)/>
+            </div>
+            <div class="four columns">
+                <input class="u-full-width" oninput=model.link.callback(Msg::CityInput)/>
+            </div>
+            <div class="four columns">
                 {
-                    for tzs.clone().into_iter().map(|t| { html!{
-                        <td>{ (t + Duration::hours(x)).format("%l:%M %p %e %b") }</td>
+                    for model.props.search_results.clone().into_iter().map(|s| {html!{
+                        <p> {s } </p>
                     }})
                 }
-                </tr>}})
-        }
-        </table>
-        <input oninput=model.link.callback(Msg::CityInput)/>
-        {
-            for model.props.search_results.clone().into_iter().map(|s| {html!{
-                <p> {s } </p>
-            }})
-        }
+            </div>
+        </div>
+        <div class="row">
+        <div class="tweleve columns">
+            <table class="u-full-width">
+            <thead>
+            <tr>
+            {
+            for cities.iter().map(|city| {html! {<th> {city} </th>} })
+            }
+            </tr>
+            </thead>
+            {
+                for hours_range.map(|x| {html! {<tr>
+                    {
+                        for tzs.clone().into_iter().map(|t| { html!{
+                            <td>{ (t + Duration::hours(x)).format("%l:%M %p %e %b") }</td>
+                        }})
+                    }
+                    </tr>}})
+            }
+            </table>
+        </div>
+        </div>
     </div>
     }
 }
