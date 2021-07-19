@@ -39,6 +39,7 @@ pub fn main_view(model: &Model) -> Html {
                         <li> {"Pick the meeting date. Table will auto update whenever a new date is picked."} </li>
                         <li> {"Search for a city. Results appear as buttons on right as you search. This can be repeated as many times as needed."} </li>
                         <li> {"Click on a city name to add it to the table. This can be repeated as many times as needed."} </li>
+                        <li> {"The table shows the time overlaps across the cities added."} </li>
                         <li> {"Click on the `x` near a city name in the table header to remove it from the table."} </li>
                     </ul>
                 </li>
