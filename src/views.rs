@@ -33,17 +33,14 @@ pub fn main_view(model: &Model) -> Html {
         </div>
         <div class="row">
             <div class="one-third column">
-            <ul>
-                <li> {"How to use this:"}
-                    <ul>
-                        <li> {"Pick the meeting date. Table will auto update whenever a new date is picked."} </li>
-                        <li> {"Search for a city. Results appear as buttons on right as you search. This can be repeated as many times as needed."} </li>
-                        <li> {"Click on a city name to add it to the table. This can be repeated as many times as needed."} </li>
-                        <li> {"The table shows the time overlaps across the cities added."} </li>
-                        <li> {"Click on the `x` near a city name in the table header to remove it from the table."} </li>
-                    </ul>
-                </li>
-            </ul>
+                <h4>{"How to use this:"}</h4>
+                <ul>
+                    <li> {"Pick the meeting date. Table will auto update whenever a new date is picked."} </li>
+                    <li> {"Search for a city. Results appear as buttons on right as you search. This can be repeated as many times as needed."} </li>
+                    <li> {"Click on a city name to add it to the table. This can be repeated as many times as needed."} </li>
+                    <li> {"The table shows the time overlaps across the cities added."} </li>
+                    <li> {"Click on the `x` near a city name in the table header to remove it from the table."} </li>
+                </ul>
             </div>
             <div class="one-third column">
                 <h4> {"1. Pick the date"} </h4>

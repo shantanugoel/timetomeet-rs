@@ -79,7 +79,7 @@ impl Component for Model {
                     .tz_db
                     .search(city_partial.value.as_ref())
                     .iter()
-                    .take(5)
+                    .take(6)
                     .cloned()
                     .collect();
                 self.props.search_results.extend(results);
