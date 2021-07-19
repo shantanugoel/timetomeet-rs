@@ -7,15 +7,22 @@ use crate::model::{Model, Msg};
 pub fn main_view(model: &Model) -> Html {
     let mut cities: Vec<String> = Vec::new();
     let mut tzs: Vec<DateTime<Tz>> = Vec::new();
+    let mut parsing_first_city = true;
     for record in model.props.selected_cities.iter() {
         let data: Vec<&str> = record.splitn(3, ',').collect();
         cities.push(data[0].to_string());
         let tz: Tz = data[2].parse().unwrap();
-        let time = tz
-            .from_local_date(&model.props.ref_date.0)
-            .unwrap()
-            .and_hms(9, 0, 0);
-        tzs.push(time);
+        if parsing_first_city {
+            let time = tz
+                .from_local_date(&model.props.ref_date)
+                .unwrap()
+                .and_hms(9, 0, 0);
+            tzs.push(time);
+            parsing_first_city = false;
+        } else {
+            let time = tzs[0].with_timezone(&tz);
+            tzs.push(time);
+        }
     }
     let hours_range = 0..24;
 

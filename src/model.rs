@@ -11,24 +11,23 @@ pub enum Msg {
     CityInput(InputData),
 }
 
-#[derive(Debug, Default, Properties, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ModelProps {
-    #[prop_or_default]
-    pub ref_date: Date,
-    #[prop_or(vec![String::from_str("Bengaluru,IN,Asia/Kolkata").unwrap(),
-     String::from_str("Mountain View,US,America/Los_Angeles").unwrap()])]
+    pub ref_date: NaiveDate,
     pub search_results: Vec<String>,
     pub selected_cities: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Date(pub NaiveDate);
-
-impl Default for Date {
+impl Default for ModelProps {
     fn default() -> Self {
-        ConsoleService::log(&today());
-        let date = NaiveDate::from_str(today().as_str()).unwrap();
-        Date { 0: date }
+        ModelProps {
+            ref_date: NaiveDate::from_str(today().as_str()).unwrap(),
+            search_results: Vec::new(),
+            selected_cities: vec![
+                String::from_str("Bengaluru,IN,Asia/Kolkata").unwrap(),
+                String::from_str("Mountain View,US,America/Los_Angeles").unwrap(),
+            ],
+        }
     }
 }
 pub struct Model {
@@ -39,14 +38,16 @@ pub struct Model {
 
 impl Component for Model {
     type Message = Msg;
-    type Properties = ModelProps;
+    type Properties = ();
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let cities_data = include_str!("./data/cities.csv");
         let mut tz_db: SimSearch<String> = SimSearch::new();
         for line in cities_data.lines() {
             tz_db.insert(line.to_string(), line);
         }
+
+        let props = ModelProps::default();
 
         Self { link, tz_db, props }
     }
@@ -55,7 +56,7 @@ impl Component for Model {
         match msg {
             Msg::DatePick(d) => match d {
                 ChangeData::Value(date_string) => {
-                    self.props.ref_date = Date(NaiveDate::from_str(date_string.as_str()).unwrap());
+                    self.props.ref_date = NaiveDate::from_str(date_string.as_str()).unwrap();
                     return true;
                 }
                 _ => ConsoleService::log("Incorrect message type received while picking date"),
@@ -82,12 +83,6 @@ impl Component for Model {
     }
 
     fn view(&self) -> yew::Html {
-        ConsoleService::log("viewing");
-        let x = self.props.search_results.clone();
-        for y in x {
-            ConsoleService::log(y.as_ref());
-        }
-        ConsoleService::log("viewing done");
         main_view(self)
     }
 }
