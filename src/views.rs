@@ -63,7 +63,10 @@ pub fn main_view(model: &Model) -> Html {
             <thead>
             <tr>
             {
-            for cities.iter().map(|city| {html! {<th> {city} <sup><a href="#">{"x"}</a></sup></th>} })
+            for cities.iter().enumerate().map(|(idx, city)| {html! {<th>
+                {city}
+                <sup><a href="#" onclick=model.link.callback(move |_| Msg::CityRemove(idx))>{"x"}</a></sup>
+                </th>} })
             }
             </tr>
             </thead>

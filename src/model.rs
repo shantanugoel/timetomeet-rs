@@ -10,7 +10,7 @@ pub enum Msg {
     DatePick(ChangeData),
     CityInput(InputData),
     CityAdd(String),
-    CityRemove(String),
+    CityRemove(usize),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -94,11 +94,12 @@ impl Component for Model {
                 result = true
             }
 
-            Msg::CityRemove(data) => {
-                let existing_index = self.props.selected_cities.iter().position(|x| x.eq(&data));
-                if existing_index.is_some() {
-                    self.props.selected_cities.remove(existing_index.unwrap());
-                }
+            Msg::CityRemove(idx) => {
+                // let existing_index = self.props.selected_cities.iter().position(|x| x.eq(&data));
+                // if existing_index.is_some() {
+                //     self.props.selected_cities.remove(existing_index.unwrap());
+                // }
+                self.props.selected_cities.remove(idx);
                 result = true
             }
         }
