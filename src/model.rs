@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use chrono::NaiveDate;
-use simsearch::SimSearch;
+use simsearch::{SearchOptions, SimSearch};
 use yew::{prelude::*, services::ConsoleService};
 
 use crate::{utils::today, views::main_view};
@@ -52,9 +52,11 @@ impl Component for Model {
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let cities_data = include_str!("./data/cities.csv");
-        let mut tz_db: SimSearch<String> = SimSearch::new();
+        let mut tz_db: SimSearch<String> =
+            SimSearch::new_with(SearchOptions::new().stop_whitespace(false));
         for line in cities_data.lines() {
-            tz_db.insert(line.to_string(), line);
+            let data: Vec<&str> = line.splitn(3, ',').collect();
+            tz_db.insert(line.to_string(), data[0]);
         }
 
         let props = ModelProps::default();
@@ -95,10 +97,6 @@ impl Component for Model {
             }
 
             Msg::CityRemove(idx) => {
-                // let existing_index = self.props.selected_cities.iter().position(|x| x.eq(&data));
-                // if existing_index.is_some() {
-                //     self.props.selected_cities.remove(existing_index.unwrap());
-                // }
                 self.props.selected_cities.remove(idx);
                 result = true
             }
