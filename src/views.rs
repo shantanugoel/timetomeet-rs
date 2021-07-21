@@ -25,6 +25,9 @@ pub fn main_view(model: &Model) -> Html {
         }
     }
     let hours_range = 0..24;
+    let biz_time_start = 900;
+    let biz_time_end = 1700;
+    let highlight_biz_time = false;
 
     html! {
     <div class="container">
@@ -76,8 +79,17 @@ pub fn main_view(model: &Model) -> Html {
             {
                 for hours_range.map(|x| {html! {<tr>
                     {
-                        for tzs.clone().into_iter().map(|t| { html!{
-                            <td>{ (t + Duration::hours(x)).format("%l:%M %p %e %b") }</td>
+                        for tzs.clone().into_iter().map(|t| {
+                            let time = t + Duration::hours(x);
+                            let mut time_class = "off";
+                            if highlight_biz_time {
+                                let time_int: u32 = time.format("%H%M").to_string().parse().unwrap();
+                                if time_int >= biz_time_start && time_int <= (biz_time_end - 100) {
+                                    time_class = "biz";
+                            }
+                            }
+                            html!{
+                            <td class={ time_class }>{ time.format("%l:%M %p %e %b") }</td>
                         }})
                     }
                     </tr>}})
