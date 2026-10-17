@@ -14,6 +14,30 @@
         background-color: #90ee90;
     }
 </style>
+<script>
+    /* STOPGAP - delete when the rewrite ships. The compiled wasm traps on
+       NaiveDate::from_str("").unwrap(), which permanently kills the app (DOM stays,
+       every interaction silently ignored) if the date input is ever submitted empty.
+       This runs in the capture phase on document, so it fires before Yew's listener
+       on the input and the empty value never reaches the wasm. No rebuild needed. */
+    (function () {
+        function today() {
+            var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+            return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+        }
+        document.addEventListener('change', function (e) {
+            var el = e.target;
+            if (!el || el.type !== 'date' || el.value) return;
+            el.value = today();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }, true);
+        /* No watchdog here on purpose: an "is the wasm still alive?" heuristic has to
+           guess from render timing and will false-alarm on slow devices. The guard above
+           closes the only trap reachable from the UI (the browser coerces any invalid
+           input[type=date] value to "", which is exactly what the panic keyed on). */
+    })();
+</script>
 <link rel="preload" href="/index-5fd569c6bcf79331_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
 <link rel="modulepreload" href="/index-5fd569c6bcf79331.js"></head>
 
