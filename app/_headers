@@ -1,8 +1,11 @@
 # Cache policy for the deploy target.
 #
-# Every asset URL carries a build version in its query string (see build.sh), so the
-# hashed-style immutable policy below is safe: a new deploy changes the URL, so a
-# returning client cannot be stuck with the previous build's CSS.
+# Versioned assets carry the build version in their PATH (see tools/version-assets.mjs),
+# which is what makes the immutable policy below safe. It cannot be the query string:
+# Cloudflare's cache key is host+path and ignores the query, so /js/app.js?v=A and
+# /js/app.js?v=B are one object at the edge and a new deploy keeps serving old bytes - for
+# a year, given max-age=31536000. Observed as `cf-cache-status: HIT, age: 666` on a URL
+# whose version string did not exist eleven minutes earlier.
 #
 # Do NOT put a Content-Type on a wildcard that also matches other file types. A rule
 # `/pkg/*  Content-Type: application/wasm` served the wasm-bindgen JS glue as wasm and the
@@ -18,8 +21,16 @@
 /style/*
   Cache-Control: public, max-age=31536000, immutable
 
-/tt-dataset.bin
-  Cache-Control: public, max-age=604800, immutable
+/data/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# A cached service worker pins the whole shell, so it must always be revalidated. The
+# browser compares it byte-wise, so it does not need a version in its URL.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/asset-manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
 
 /index.html
   Cache-Control: public, max-age=0, must-revalidate

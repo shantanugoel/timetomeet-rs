@@ -15,7 +15,13 @@
     }
 </style>
 <script>
-    /* STOPGAP - delete when the rewrite ships. The compiled wasm traps on
+    /* ROLLBACK ARTIFACT - keep while GitHub Pages remains the fallback origin.
+   * timetomeet.shantanugoel.com now serves the rewrite from Cloudflare Pages, so this
+   * build is only reached if the DNS record is pointed back at GitHub Pages, and then
+   * this guard is the only thing between a blank date and a permanently dead page.
+   * Delete it together with the GitHub Pages deployment, not before.
+   */
+   /* The compiled wasm traps on
        NaiveDate::from_str("").unwrap(), which permanently kills the app (DOM stays,
        every interaction silently ignored) if the date input is ever submitted empty.
        This runs in the capture phase on document, so it fires before Yew's listener

@@ -854,10 +854,43 @@ ignored". `node --check` and the style contract now exist for that reason.
   §4.5. It is usable (tap a band to place the meeting, tap a suggestion to accept it) and it
   is what World Time Buddy ships. The card layout is unbuilt.
 - **No `sitemap.xml`** although `robots.txt` points at one.
-- **The DNS flip has not happened.** The wrangler token has `pages: write` and `zone: read`
-  but **no `dns: write`**, so attaching `timetomeet.shantanugoel.com` needs the dashboard or
-  a token with DNS write. Rollback stays: point the record back at GitHub Pages, which still
-  serves the guarded legacy build.
+- **Cutover happened; see below.** Rollback is a DNS edit back to GitHub Pages.
+
+## Cutover (done)
+
+`timetomeet.shantanugoel.com` now serves the rewrite from Cloudflare Pages. Verified on the
+real domain rather than a preview: 15/15 smoke checks, rows + slots + verdict, lazy dataset
+("12323 cities · 597 zones"), a deep link (`#v=1&d=2026-12-25&z=Europe/Stockholm&dur=90&s=…`)
+restoring date, duration and selection, `Escape` closing the palette both from the button and
+with the caret in the field, zero console errors, and no `[data-yew-id]` anywhere.
+
+The token had `pages: write` and `ssl_certs: write` but **no DNS scope at all** — even
+*reading* the record returned `Authentication error`. Attaching the custom domain from the
+Pages dashboard did the DNS record and the certificate in one step, which is the better
+order anyway: editing DNS first leaves a window where the name resolves somewhere Pages does
+not serve.
+
+**Decision reversed: the stopgap stays.** The plan said delete the `docs/index.html` guard at
+cutover. That was wrong. `docs/` is now the rollback artifact, and the guard is the only
+thing between a blank date input and a permanently dead page *if the record is ever pointed
+back at GitHub Pages*. It is twelve lines and fires only on an empty date. It gets deleted
+together with the GitHub Pages deployment, not before — the marker comment now says so.
+
+Rollback: point the `timetomeet` record back at `CNAME shantanugoel.github.io`, Proxied. Back
+in about a minute. Leave the GitHub Pages deployment alone for a week.
+
+Two traps found on the way, both invisible in a desktop screenshot:
+
+1. `.actionbar` had `position: sticky; inset-block-end: 0` on mobile and did nothing,
+   because the same media query set `body { overflow: auto }`. That makes `<body>` its own
+   scroll container with a height equal to its content, so nothing scrolls *inside* it and
+   sticky-bottom has no scrollport to stick to — `Copy link`, the primary CTA, sat below the
+   fold. `html, body { overflow: visible }` hands scrolling back to the viewport.
+2. Three of my own verification probes were wrong and passed anyway: `#actionbar` does not
+   exist (it is a class), `element.hidden` is not how the palette closes, and `scrollWidth`
+   clamps to the content box under `overflow: hidden` so it can never report clipping. The
+   clip check now compares the last visible child's right edge against the label's content
+   box. Nothing here is believed unless the probe could have failed.
 - `Asia/Calcutta` is shown as typed rather than normalised to `Asia/Kolkata`.
 
 ## What the guard is for

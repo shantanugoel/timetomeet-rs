@@ -45,7 +45,8 @@ const server = createServer(async (req, res) => {
     if (!body) body = await readFile(file);
 
     const ext = extname(file);
-    const immutable = /^(\/pkg\/|\/js\/|\/style\/)/.test(path) || path.endsWith('.bin');
+    const mutable = path === '/sw.js' || path === '/asset-manifest.json' || path === '/';
+    const immutable = !mutable && (/^(\/pkg\/|\/js\/|\/style\/|\/data\/)/.test(path) || path.endsWith('.bin'));
     res.writeHead(200, {
       'content-type': TYPES[ext] || 'application/octet-stream',
       'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-store',

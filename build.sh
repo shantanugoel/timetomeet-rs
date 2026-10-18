@@ -52,9 +52,14 @@ rm -f "$DIST/pkg/"*.rs "$DIST/pkg/.gitignore" "$DIST/pkg"/*.d.ts.map 2>/dev/null
 printf 'APP_VERSION=%s\n' "$APP_VERSION" > "$DIST/version.txt"
 # The service worker must change identity when the bundle does, or a stale cache outlives
 # the deploy that fixed it.
-# Every asset URL carries the deploy version. /js/* and /style/* are served immutable, so
-# without this a returning visitor keeps the previous build's CSS forever.
 find "$DIST" -type f \( -name '*.html' -o -name '*.js' -o -name '*.webmanifest' \) -exec sed -i "s/APP_VERSION/$APP_VERSION/g" {} +
+
+# The version goes into the filename, not the query string: Cloudflare's cache key is
+# host+path and ignores the query, so ?v= does nothing at the edge and an immutable asset
+# keeps its old bytes for a year. This also fails the build if any reference is left
+# unversioned or points at a file that is not in dist.
+say "versioning asset paths"
+node tools/version-assets.mjs "$DIST" "$APP_VERSION"
 [ -f "$DIST/icon-192.png" ] || rsvg-convert -w 192 -h 192 "$DIST/icon.svg" -o "$DIST/icon-192.png"
 [ -f "$DIST/icon-512.png" ] || rsvg-convert -w 512 -h 512 "$DIST/icon.svg" -o "$DIST/icon-512.png"
 
@@ -64,12 +69,13 @@ find "$DIST" -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' -o -name
 
 # The dataset is lazy-loaded, so it must not count against first paint.
 FIRST=$(find "$DIST" -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.wasm' \) ! -name '*.bin' -exec stat -c '%n %s' {} + | sort -k2 -n)
-WASM_BR=$(stat -c '%s' "$DIST/pkg/tt_wasm_bg.wasm.br")
+WASM_BR=$(stat -c '%s' "$(ls "$DIST"/pkg/tt_wasm_bg.*.wasm.br | head -1)")
 TOTAL_BR=$(find "$DIST" -type f \( -name '*.html.br' -o -name '*.css.br' -o -name '*.js.br' -o -name '*.wasm.br' \) -printf '%s\n' | awk '{s+=$1} END {print s+0}')
 
 echo
 printf '%-34s %10s %10s\n' FILE RAW BROTLI
-for f in "$DIST/index.html" "$DIST/style/app.css" "$DIST/js/app.js" "$DIST/js/engine.js" "$DIST/pkg/tt_wasm.js" "$DIST/pkg/tt_wasm_bg.wasm" "$DIST/tt-dataset.bin"; do
+# Unquoted on purpose: the glob list must word-split, and no asset name contains a space.
+for f in "$DIST/index.html" $(ls "$DIST"/style/app.*.css "$DIST"/js/app.*.js "$DIST"/js/engine.*.js "$DIST"/pkg/tt_wasm.*.js "$DIST"/pkg/tt_wasm_bg.*.wasm "$DIST"/data/dataset.*.bin); do
   raw=$(stat -c '%s' "$f"); br=$(stat -c '%s' "$f.br" 2>/dev/null || echo -)
   printf '%-34s %10s %10s\n' "${f#$DIST/}" "$raw" "$br"
 done

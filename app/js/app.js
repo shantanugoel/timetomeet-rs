@@ -131,6 +131,7 @@ function rowNode(row) {
   const marks = row.dst_change ? ' <span title="DST change on this date">⚠</span>' : '';
   label.innerHTML =
     `<div class="n"><span class="nm"></span></div>
+     <div class="mt"></div>
      <div class="m"><span class="tz">${row.offset_min >= 0 ? '+' : '-'}${pad(Math.floor(Math.abs(row.offset_min) / 60))}:${pad(Math.abs(row.offset_min) % 60)}</span>
      <span class="work">${row.work_label}</span>${marks}</div>`;
   label.querySelector('.nm').textContent = row.name;
@@ -232,6 +233,55 @@ function paintRows() {
 
   paintRuler();
   paintSelection();
+  // The grid was just rebuilt, so every label is blank until the current selection is
+  // written back into it.
+  if (state.verdict) paintRowTimes(state.verdict);
+}
+
+/// The viewer's own date label for an instant, using the day slice that contains it -
+/// so a 3-day span compares each person's date against the right day, not day one.
+function viewerDateLabel(startUtc) {
+  const days = state.report?.days || [];
+  let label = days[0]?.date_label ?? '';
+  for (const d of days) if (startUtc >= d.grid_start) label = d.date_label;
+  return label;
+}
+
+/// "What time is this for ME" is the whole point of the tool, and the row label is the
+/// only region that stays on screen while the grid scrolls sideways - so the answer lives
+/// there, not only in the slot cards. Colour alone never carries it: the square takes the
+/// quality hue, the digits carry the fact, and a weekday appears whenever their date is
+/// not yours.
+function paintRowTimes(v) {
+  const viewerDate = viewerDateLabel(v.start_utc);
+  for (const p of v.persons) {
+    const el = document.querySelector(`.row[data-pid="${p.person_id}"] .mt`);
+    if (!el) continue;
+    el.className = `mt q-${p.quality}`;
+    el.textContent = '';
+    const dot = document.createElement('i');
+    dot.className = 'dot';
+    const time = document.createElement('span');
+    time.textContent = `${p.local_start}–${p.local_end}`;
+    el.append(dot, time);
+    if (p.local_date !== viewerDate) {
+      const d = document.createElement('span');
+      d.className = 'd';
+      d.textContent = p.local_date.split(' ')[0];
+      el.append(d);
+    }
+    if (p.clipped_min) {
+      const c = document.createElement('span');
+      c.className = 'clip';
+      c.textContent = `−${p.clipped_min}m`;
+      el.append(c);
+    }
+    el.title = `${p.local_date} · ${p.reason}`;
+  }
+}
+
+function clearRowTimes() {
+  document.querySelectorAll('.row .mt').forEach((el) => { el.textContent = ''; el.title = ''; });
 }
 
 function paintRuler() {
@@ -414,10 +464,11 @@ function requestCheap() {
 }
 
 function paintVerdict() {
-  if (state.startUtc == null || !state.people.length) return;
+  if (state.startUtc == null || !state.people.length) { clearRowTimes(); return; }
   const v = E.scoreWindow({ startUtc: state.startUtc, durationMin: state.durationMin, viewerTz: state.viewerTz, people: state.people });
   if (v.error) return;
   state.verdict = v;
+  paintRowTimes(v);
   const c = v.counts;
   $('selTitle').textContent = `${fmtClock(state.startUtc)}–${fmtClock(state.startUtc + state.durationMin * 60)} your time`;
   $('selSub').textContent = v.worst_name

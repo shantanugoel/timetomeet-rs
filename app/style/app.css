@@ -41,7 +41,7 @@
   --select: oklch(88% 0.16 195);
 
   --label-w: 196px;
-  --row-h: 56px;
+  --row-h: 60px;
   --radius: 10px;
   --radius-sm: 4px;
 
@@ -210,10 +210,13 @@ main {
 @media (max-width: 1080px) {
   /* Single column: the page scrolls again rather than cramming two internal scrollers
      into a phone viewport. */
-  body { overflow: auto; block-size: auto; min-block-size: 100dvh; }
+  /* `overflow: auto` here would make <body> its own scroll container whose height equals
+     its content, so nothing scrolls inside it - and sticky-bottom .actionbar would have no
+     scrollport to stick to. The viewport must be the scroller. */
+  html, body { overflow: visible; block-size: auto; min-block-size: 100dvh; }
   main { grid-template-columns: minmax(0, 1fr); overflow: visible; }
   .rail { border-inline-start: 0 !important; border-block-start: 1px solid var(--hair); overflow: visible; }
-  .actionbar { position: sticky; inset-block-end: 0; }
+  .actionbar { position: sticky; inset-block-end: 0; z-index: 20; }
 }
 
 .rail {
@@ -306,6 +309,22 @@ main {
 .rowlabel .m .tz { font-family: var(--font-clock); }
 .rowlabel .role { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 3px; padding: 0 3px; flex: none; }
 .rowlabel .role.organizer { color: var(--working); border-color: color-mix(in oklab, var(--working) 45%, transparent); }
+/* Their local time for the current selection, against the name. It is the answer to the
+   one question this tool exists to answer, and the label column is the only thing that
+   stays visible while the grid scrolls sideways. */
+.rowlabel .mt {
+  font: 600 12px/1.25 var(--font-clock); font-variant-numeric: tabular-nums;
+  display: flex; gap: 4px; align-items: center; white-space: nowrap; overflow: hidden;
+  min-inline-size: 0;
+}
+.rowlabel .mt:empty::before { content: "—"; color: var(--hair-strong); }
+.rowlabel .mt .dot { inline-size: 6px; block-size: 6px; border-radius: 2px; flex: none; background: currentColor; }
+.rowlabel .mt .d { font-size: 10px; color: var(--muted); }
+.rowlabel .mt .clip { font-size: 10px; color: var(--shoulder-text); }
+.rowlabel .mt.q-working { color: var(--working-text); }
+.rowlabel .mt.q-shoulder { color: var(--shoulder-text); }
+.rowlabel .mt.q-offhours { color: var(--off-text); }
+.rowlabel .mt.q-asleep { color: var(--asleep-text); }
 
 .band {
   position: relative;
@@ -566,4 +585,10 @@ textarea { inline-size: 100%; min-block-size: 84px; background: var(--surface-2)
   :root { --label-w: 128px; --row-h: 62px; }
   main { grid-template-columns: minmax(0, 1fr); }
   .rowlabel .m .work { display: none; }
+  /* The label column cannot grow much on a phone without eating the band it labels, so
+     the meeting time gets a smaller face and the "minutes outside their window" marker -
+     secondary, and still in the tooltip - gives up its space, same as the work window. */
+  .rowlabel { padding-inline: 9px; }
+  .rowlabel .mt { font-size: 11px; gap: 3px; }
+  .rowlabel .mt .clip { display: none; }
 }
