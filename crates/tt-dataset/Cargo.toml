@@ -1,0 +1,12 @@
+[package]
+name = "tt-dataset"
+description = "Compiles GeoNames + the IANA zone list into the flat search index tt-core reads."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+chrono-tz.workspace = true
+

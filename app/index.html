@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Time to Meet — find a time that works for everyone</title>
+<meta name="description" content="Plan a meeting across timezones. Colour-coded working hours, ranked fair slots, one-click calendar invite. Runs entirely in your browser.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0d1017">
+<meta name="og:title" content="Time to Meet">
+<meta name="og:description" content="Colour-coded working hours, ranked fair slots, one-click invite.">
+<meta name="og:type" content="website">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="version" content="APP_VERSION">
+<link rel="stylesheet" href="/style/app.css?v=APP_VERSION">
+<link rel="modulepreload" href="/pkg/tt_wasm.js?v=APP_VERSION">
+<link rel="preload" href="/style/app.css?v=APP_VERSION" as="style">
+</head>
+<body>
+<a class="skip" href="#grid">Skip to the timezone grid</a>
+
+<header class="bar">
+  <div class="brand">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="1.6" opacity=".55"/>
+      <path d="M12 6.6V12l3.6 2.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" class="mark"/>
+    </svg>
+    <span>Time to Meet</span>
+  </div>
+
+  <button class="btn ghost" id="groupBtn" title="Saved groups">
+    <span id="groupName">No group</span> ▾
+  </button>
+
+  <button class="btn" id="searchBtn">+ Add person <kbd>⌘K</kbd></button>
+
+  <span class="spacer"></span>
+
+  <span class="chip" id="viewerChip" title="Your timezone — click to change">
+    <span id="viewerTzLabel">detecting…</span>
+  </span>
+  <button class="btn ghost" id="viewToggle" title="Switch between the planning grid and the team roster">Roster</button>
+  <button class="btn ghost" id="themeBtn" title="Theme" aria-label="Toggle theme"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button>
+  <button class="btn ghost" id="helpBtn" title="Keyboard shortcuts" aria-label="Help">?</button>
+</header>
+
+<div class="toolbar">
+  <div class="field">
+    <button class="btn ghost" id="prevDay" aria-label="Previous day">◀</button>
+    <input type="date" id="dateInput" aria-label="Meeting date">
+    <button class="btn ghost" id="nextDay" aria-label="Next day">▶</button>
+    <button class="btn ghost" id="todayBtn">Today</button>
+  </div>
+
+  <div class="field">Duration
+    <div class="seg" id="durSeg" role="group" aria-label="Meeting duration">
+      <button data-dur="30">30m</button>
+      <button data-dur="45">45m</button>
+      <button data-dur="60">1h</button>
+      <button data-dur="90">90m</button>
+      <button data-dur="120">2h</button>
+    </div>
+  </div>
+
+  <div class="field">Span
+    <div class="seg" id="spanSeg" role="group" aria-label="How many days to show">
+      <button data-span="1">Day</button>
+      <button data-span="2">48h</button>
+      <button data-span="3">3 days</button>
+    </div>
+  </div>
+
+  <span class="spacer"></span>
+  <span class="clock" id="nowClock" aria-label="Current time in your timezone"></span>
+</div>
+
+<main>
+  <section class="gridwrap" id="grid" aria-label="Timezone grid">
+    <div class="axis">
+      <div class="who" id="axisWho">your day</div>
+      <div class="ruler" id="ruler"></div>
+    </div>
+    <div class="rows" id="rows">
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><i class="q-working"></i>working</span>
+      <span><i class="q-shoulder"></i>shoulder</span>
+      <span><i class="q-offhours"></i>off hours</span>
+      <span><i class="q-asleep"></i>asleep</span>
+      <span>▨ weekend</span><span>│ their midnight</span><span>↑↓ sunrise/sunset in their sky</span>
+      <span>⚠ DST change on this date</span>
+    </div>
+    <noscript>
+      <p class="empty"><b>This tool needs JavaScript.</b><br>
+      The timezone maths runs locally in your browser — nothing is sent anywhere.
+      For a one-off conversion, <a href="https://www.timeanddate.com/worldclock/converter.html">timeanddate.com</a> works without it.</p>
+    </noscript>
+  </section>
+
+  <aside class="rail">
+    <div class="panel">
+      <h2>People <span class="spacer"></span><button class="btn ghost" id="addBtn" style="padding:2px 9px" aria-label="Add person">+</button></h2>
+      <div class="body" id="peopleList"></div>
+    </div>
+
+    <div class="panel" id="rail_slots">
+      <h2>Best slots <span id="slotsFor" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div class="body" id="slotList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Fairness</h2>
+      <div class="body">
+        <div class="meter" aria-hidden="true"><i id="fairMeter" style="width:0%"></i></div>
+        <div id="fairText" style="font-size:12px;color:var(--muted)">Pick a slot to see who carries the cost.</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="actionbar">
+  <div>
+    <div class="big" id="selTitle">Nothing selected</div>
+    <div class="sub" id="selSub">Drag on the grid, or pick a suggested slot.</div>
+  </div>
+  <span class="counts" id="selCounts" aria-live="polite"></span>
+  <button class="btn ghost" id="detailsBtn" disabled title="Per-person times, calendar file and embed">Details</button>
+  <span class="spacer"></span>
+  <button class="btn" id="icsBtn" disabled><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M2.5 12.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Calendar .ics</button>
+  <button class="btn" id="textBtn" disabled><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 4h11M2.5 8h8M2.5 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Copy for Slack</button>
+  <button class="btn primary" id="shareBtn" disabled><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5 9.5 6.5M5.2 7.1 3.8 8.5a2.6 2.6 0 0 0 3.7 3.7l1.4-1.4M10.8 8.9l1.4-1.4a2.6 2.6 0 0 0-3.7-3.7L7.1 5.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Copy link</button>
+</div>
+
+<div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Add a person">
+  <div class="box">
+    <input type="text" id="q" placeholder="City, airport code or timezone - try blr, sfo, Dublin"
+           autocomplete="off" spellcheck="false" aria-controls="results">
+    <ol id="results"></ol>
+    <div class="hint">
+      <span><b>↑↓</b> move</span><span><b>⏎</b> add</span><span><b>⇧⏎</b> replace all</span><span><b>esc</b> close</span>
+      <span class="spacer"></span><span id="dsState"></span>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Share this slot">
+  <div class="box">
+    <div style="display:flex;align-items:center;gap:10px">
+      <b id="sheetTitle">Slot</b><span class="spacer"></span>
+      <button class="btn ghost" id="sheetClose" aria-label="Close">✕ close</button>
+    </div>
+    <div class="times" id="sheetTimes"></div>
+    <label style="font-size:12px;color:var(--muted)">Meeting title
+      <input type="text" id="sheetSummary" placeholder="Weekly sync" style="inline-size:100%;margin-block-start:4px">
+    </label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" id="sheetIcs"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M2.5 12.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Download .ics</button>
+      <button class="btn" id="sheetCopyText"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 4h11M2.5 8h8M2.5 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Copy plain text</button>
+      <button class="btn" id="sheetCopyLink"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5 9.5 6.5M5.2 7.1 3.8 8.5a2.6 2.6 0 0 0 3.7 3.7l1.4-1.4M10.8 8.9l1.4-1.4a2.6 2.6 0 0 0-3.7-3.7L7.1 5.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Copy link</button>
+      <button class="btn ghost" id="sheetEmbed">&lt;/&gt; Embed roster</button>
+    </div>
+    <textarea id="sheetText" readonly aria-label="Plain text summary"></textarea>
+  </div>
+</div>
+
+<div class="visually-hidden" role="status" aria-live="polite" id="live"></div>
+
+<script>
+/* Wasm-free first paint.
+ *
+ * The engine is ~157 KB of wasm and the city index is lazy-loaded, so the shell must be
+ * useful before either arrives: we detect the visitor's timezone, print the date, and say
+ * what is happening. This block is ~1 KB, runs inline, and touches no module. */
+(function () {
+  var tz = 'UTC';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
+  var now = new Date();
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var iso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+
+  var el = document.getElementById('viewerTzLabel');
+  if (el) el.textContent = tz;
+  var d = document.getElementById('dateInput');
+  if (d) { d.value = iso; d.min = '1970-01-01'; }
+  var c = document.getElementById('nowClock');
+  if (c) c.textContent = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now);
+  var rows = document.getElementById('rows');
+  if (rows) {
+    var p = document.createElement('p');
+    p.className = 'empty';
+    p.id = 'booting';
+    p.innerHTML = 'Loading the timezone engine…<br><small style="color:var(--faint)">Your timezone: ' + tz +
+                  ' · everything runs locally, nothing is uploaded.</small>';
+    rows.appendChild(p);
+  }
+  document.documentElement.dataset.theme = localStorage.getItem('tt-theme') ||
+    (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+})();
+</script>
+<script type="module" src="/js/app.js?v=APP_VERSION"></script>
+</body>
+</html>

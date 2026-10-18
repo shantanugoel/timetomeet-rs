@@ -761,3 +761,107 @@ is a product defect. Recorded so nobody chases a phantom.
 A "the wasm trapped" watchdog banner was written, tested, and **removed**: it had to
 guess aliveness from render timing and false-alarmed on a healthy app. The guard closes
 the only UI-reachable trap, so the heuristic bought risk rather than safety.
+---
+
+# Part 5 — Delivery report (M0–M7 shipped to preview)
+
+Preview: **https://timetomeet-42n.pages.dev** · production
+(`timetomeet.shantanugoel.com`) is still the guarded legacy build, untouched.
+
+## What was built
+
+```
+crates/tt-core     pure Rust engine: instants, zones, bands, scoring, solar, ICS, URL state
+crates/tt-wasm     thin JSON facade, 9 exports, no DOM
+crates/tt-cli      the same engine in a terminal (dogfooding harness, and a real feature)
+crates/tt-dataset  GeoNames + IANA -> flat binary index
+app/               index.html, one stylesheet, two ES modules
+tools/             check-styles.mjs, check-wasm-abi.mjs, smoke.mjs
+```
+
+Measured, not estimated:
+
+| | legacy | rewrite |
+|---|---|---|
+| first paint over the wire | 410 KB gz | **181 KB br** |
+| engine | 410 KB wasm, unbuildable | 158 KB br wasm |
+| city index | none | 460 KB, lazy, on first search |
+| tests | 0 | 45 |
+| CI | none | fmt + clippy -D warnings + test + contracts + budgets |
+| date input | permanently traps the wasm | cannot trap the engine |
+
+## Decisions the plan got wrong
+
+**The earth shadow was cut.** §4 called for one night-side gradient across the grid. It is
+semantically impossible: the terminator sits at a different x for every row, because every
+row is a different zone. Rendered, it read as a grey box over the data. The per-row
+sunrise/sunset glyphs say the same thing truthfully, and the bands already encode who is
+asleep. `darkness_profile` stays in the engine — it is correct and tested — it just is not
+painted, because there is no honest single place to paint it.
+
+**Weekend dates were a first-run bug, not an edge case.** The environment's "today" is
+Sunday, so the first thing any reviewer saw was a grid where nobody works and six
+equally-bad suggestions ranked like advice. Two fixes: the engine widens the suggestion
+horizon to 72h when half the weighted team rests that day and labels the day each
+suggestion belongs to; and a fresh visitor lands on the next working day (a shared link
+always wins — the sender picked that moment deliberately).
+
+**Opening on 09:00 was wrong.** The default selection scored 26/100 next to a 68/100
+suggestion, so the tool opened by arguing with the user. It now opens on the best slot for
+that team, and ◀ ▶ re-picks per day.
+
+**Numbers needed words.** "58" invites a search for a scale. `score_label` says
+"workable".
+
+## Bugs found by testing, all of them invisible in unit tests
+
+1. `#[serde(rename_all = "lowercase")]` makes `OffHours` -> `"offHours"` != `"offhours"`.
+   One undefined `var()` invalidates the whole `background-image`, so every band rendered as
+   an empty white row with no error anywhere. Fixed by naming the CSS custom properties
+   after the wire values, so there is no mapping layer to get wrong.
+2. `wasm_bindgen` maps `i64` to BigInt. `search_cities(query, k, now)` was passed a Number,
+   which threw inside a promise: the palette silently showed "no results" for a query the
+   engine answers correctly. Caught by `tools/check-wasm-abi.mjs`, which now reads the Rust
+   signatures and every JS call site and fails the build.
+3. `_headers` had `Content-Type: application/wasm` on `/pkg/*`, which also matched the
+   JS glue. The browser refused to `import()` it: blank page, one vague console error,
+   and it only happened in production. Caught by `tools/smoke.mjs`, which now runs after
+   every deploy and asserts the content types the CDN actually returned.
+4. The asset version hash covered only the sources, so a Rust-only change republished a new
+   wasm under an unchanged URL — invisible to every client, because `/pkg/*` is immutable.
+   The hash now covers the built wasm, the built dataset, `_headers` and `sw.js`.
+5. `Escape` was swallowed when focus was in a field, so a dialog could only be closed by
+   clicking. The universal dismiss now runs before the "don't hijack typing" guard.
+6. Absolutely-positioned layers without `inset-inline-end` shrink to zero width, so every
+   percentage inside them resolved against nothing: the selection collapsed to a 2px line
+   at x=0.
+7. Hour labels were emitted at a fixed density, so on a 230px phone grid 24 labels of 22px
+   overlapped into a smear. Density is now derived from the measured band width.
+
+Also: five files silently contained a stray `</content>` tag from my own tool calls, and one
+patch modified the CSS string and never wrote it back. Both looked like "the CSS is
+ignored". `node --check` and the style contract now exist for that reason.
+
+## Known gaps, with numbers
+
+- **The city index is not compressed in transit.** Cloudflare Pages does not compress
+  `.bin`, so the first search transfers 460 KB instead of the 216 KB it is brotli'd to on
+  disk. It is lazy, cached for 7 days, and off the first-paint path. Two candidate fixes:
+  ship it as a `.js` module holding base64 (CF compresses `.js`; ~220 KB on the wire), or
+  raise the population floor to 100k (6 283 cities, ~240 KB raw). Neither is free; neither
+  was worth blocking the cutover.
+- **Mobile is a horizontally-scrolling grid with sticky labels**, not the card layout in
+  §4.5. It is usable (tap a band to place the meeting, tap a suggestion to accept it) and it
+  is what World Time Buddy ships. The card layout is unbuilt.
+- **No `sitemap.xml`** although `robots.txt` points at one.
+- **The DNS flip has not happened.** The wrangler token has `pages: write` and `zone: read`
+  but **no `dns: write`**, so attaching `timetomeet.shantanugoel.com` needs the dashboard or
+  a token with DNS write. Rollback stays: point the record back at GitHub Pages, which still
+  serves the guarded legacy build.
+- `Asia/Calcutta` is shown as typed rather than normalised to `Asia/Kolkata`.
+
+## What the guard is for
+
+`docs/index.html` still carries the date-input stopgap on production. It is deleted by the
+cutover commit, not before: it is the only thing standing between a mistyped date and a
+permanently dead page for every visitor until DNS moves.

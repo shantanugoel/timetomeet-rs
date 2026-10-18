@@ -1,0 +1,18 @@
+[package]
+name = "tt-cli"
+description = "tt - plan a meeting across timezones from the terminal. Same engine as the web app."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "tt"
+path = "src/main.rs"
+
+[dependencies]
+tt-core = { path = "../tt-core" }
+chrono.workspace = true
+chrono-tz.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "tt-core"
+description = "Timezone overlap engine: DST-correct instants, availability bands, slot scoring, ICS. Pure Rust, no browser bindings, so it is testable with plain `cargo test`."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+chrono.workspace = true
+chrono-tz.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -1,0 +1,34 @@
+# Cache policy for the deploy target.
+#
+# Every asset URL carries a build version in its query string (see build.sh), so the
+# hashed-style immutable policy below is safe: a new deploy changes the URL, so a
+# returning client cannot be stuck with the previous build's CSS.
+#
+# Do NOT put a Content-Type on a wildcard that also matches other file types. A rule
+# `/pkg/*  Content-Type: application/wasm` served the wasm-bindgen JS glue as wasm and the
+# browser refused to import() it - silently, with only "failed to fetch dynamically
+# imported module" in the console. Cloudflare already maps .wasm correctly.
+
+/pkg/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/style/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/tt-dataset.bin
+  Cache-Control: public, max-age=604800, immutable
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *

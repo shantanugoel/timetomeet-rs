@@ -1,0 +1,569 @@
+/* Time to Meet - design system + grid.
+ *
+ * Hand-written CSS, no framework: the whole stylesheet is ~15 KB and *is* the design
+ * system. Deliberate choices:
+ *  - Dark-first, with a light theme that is authored rather than inverted.
+ *  - Colour is never the only signal: every band also carries a glyph and a word.
+ *  - The quality ramp is luminance-ordered, so it survives greyscale, deuteranopia and
+ *    Windows forced-colors mode.
+ *  - All clocks use tabular numerals. Digits that jitter while you drag destroy the
+ *    entire feel of the tool.
+ *  - Logical properties throughout, so RTL is free.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --bg: oklch(17% 0.02 265);
+  --surface: oklch(21% 0.02 265);
+  --surface-2: oklch(25% 0.02 265);
+  --hair: rgba(255, 255, 255, 0.07);
+  --hair-strong: rgba(255, 255, 255, 0.16);
+  --text: oklch(93% 0.01 265);
+  --muted: oklch(76% 0.02 265);
+  --faint: oklch(64% 0.02 265);
+
+  /* A luminance ramp, dark -> bright: asleep < off hours < shoulder < working. If two of
+     these differ only in hue they are unreadable to a colour-blind person and to anyone on
+     a bad screen, and the design principle says quality must survive greyscale. */
+  --working: oklch(74% 0.14 175);
+  --shoulder: oklch(62% 0.13 62);
+  --offhours: oklch(40% 0.05 265);
+  --asleep: oklch(11% 0.04 285);
+  --band-edge: rgba(255, 255, 255, 0.32);
+  /* Band fills are chosen for area; these are chosen for 12px text on a surface. Using the
+     fill for text is what makes a legend unreadable in one of the two themes. */
+  --working-text: oklch(80% 0.13 175);
+  --shoulder-text: oklch(80% 0.13 75);
+  --off-text: oklch(78% 0.02 265);
+  --asleep-text: oklch(78% 0.13 20);
+  --danger: oklch(65% 0.19 15);
+  --select: oklch(88% 0.16 195);
+
+  --label-w: 196px;
+  --row-h: 56px;
+  --radius: 10px;
+  --radius-sm: 4px;
+
+  --font-ui: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-clock: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: oklch(98% 0.004 265);
+  --surface: oklch(95.5% 0.006 265);
+  --surface-2: oklch(92% 0.008 265);
+  --hair: rgba(12, 16, 30, 0.09);
+  --hair-strong: rgba(12, 16, 30, 0.2);
+  --text: oklch(23% 0.02 265);
+  --muted: oklch(45% 0.02 265);
+  --faint: oklch(50% 0.02 265);
+
+  --working: oklch(56% 0.115 172);
+  --shoulder: oklch(66% 0.14 68);
+  --offhours: oklch(80% 0.02 260);
+  --asleep: oklch(91% 0.045 295);
+  --band-edge: rgba(0, 0, 0, 0.34);
+  --working-text: oklch(43% 0.11 175);
+  --shoulder-text: oklch(45% 0.12 65);
+  --off-text: var(--muted);
+  --asleep-text: oklch(44% 0.19 25);
+  --select: oklch(52% 0.15 220);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { color-scheme: light;
+    --bg: oklch(98% 0.004 265);
+    --surface: oklch(95.5% 0.006 265);
+    --surface-2: oklch(92% 0.008 265);
+    --hair: rgba(12, 16, 30, 0.09);
+    --hair-strong: rgba(12, 16, 30, 0.2);
+    --text: oklch(23% 0.02 265);
+    --muted: oklch(45% 0.02 265);
+    --faint: oklch(50% 0.02 265);
+    --working: oklch(56% 0.115 172);
+    --shoulder: oklch(66% 0.14 68);
+    --offhours: oklch(80% 0.02 260);
+    --asleep: oklch(91% 0.045 295);
+    --band-edge: rgba(0, 0, 0, 0.34);
+    --working-text: oklch(43% 0.11 175);
+    --shoulder-text: oklch(45% 0.12 65);
+    --off-text: oklch(42% 0.02 265);
+    --asleep-text: oklch(44% 0.19 25);
+    --select: oklch(52% 0.15 220);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 var(--font-ui);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  block-size: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  /* A quiet radial so the surface never reads as flat black. */
+  background-image: radial-gradient(120% 80% at 50% -20%, rgba(120, 160, 255, 0.07), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+.clock, .num { font-family: var(--font-clock); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+button, input, select { font: inherit; color: inherit; }
+
+:where(a) { color: var(--select); text-underline-offset: 3px; }
+
+:focus-visible {
+  outline: 2px solid var(--select);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.skip {
+  position: absolute; inset-inline-start: 8px; inset-block-start: -60px;
+  background: var(--surface-2); padding: 8px 14px; border-radius: 8px; z-index: 100;
+  transition: inset-block-start var(--dur);
+}
+.skip:focus { inset-block-start: 8px; }
+
+/* ---------------------------------------------------------------- header */
+
+header.bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px;
+  border-block-end: 1px solid var(--hair);
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: -0.015em; }
+.brand svg { display: block; }
+.brand .mark { color: var(--working); }
+
+.spacer { flex: 1 1 auto; }
+
+.btn {
+  appearance: none; border: 1px solid var(--hair-strong); background: var(--surface-2);
+  color: var(--text); padding: 7px 12px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.btn:hover { background: color-mix(in oklab, var(--surface-2) 60%, var(--select) 12%); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--select); color: oklch(18% 0.03 250); border-color: transparent; font-weight: 620; }
+.btn.ghost { background: transparent; border-color: var(--hair); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn kbd { font: 11px var(--font-clock); opacity: 0.65; border: 1px solid var(--hair-strong); border-radius: 4px; padding: 0 4px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+  border: 1px solid var(--hair); border-radius: 999px; background: var(--surface);
+  font-size: 12.5px;
+}
+.chip .x { cursor: pointer; opacity: 0.55; padding: 0 2px; border-radius: 4px; }
+.chip .x:hover { opacity: 1; background: var(--danger); color: #fff; }
+
+/* ---------------------------------------------------------------- toolbar */
+
+.toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px; border-block-end: 1px solid var(--hair);
+}
+
+.seg { display: inline-flex; border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; }
+.seg button {
+  appearance: none; background: transparent; border: 0; padding: 6px 11px; cursor: pointer;
+  color: var(--muted); border-inline-end: 1px solid var(--hair);
+}
+.seg button:last-child { border-inline-end: 0; }
+.seg button[aria-pressed="true"] { background: var(--select); color: oklch(18% 0.03 250); font-weight: 620; }
+
+.field { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+input[type="date"], input[type="time"], input[type="number"], input[type="text"], select {
+  background: var(--surface-2); border: 1px solid var(--hair-strong); border-radius: 8px;
+  padding: 6px 9px; color: var(--text);
+}
+input::-webkit-calendar-picker-indicator { opacity: 0.55; filter: var(--picker-filter, none); }
+input[type="date"] { font-family: var(--font-clock); }
+
+/* ---------------------------------------------------------------- layout */
+
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 364px;
+  gap: 0;
+  min-block-size: 0;
+  overflow: hidden;
+}
+@media (max-width: 1080px) {
+  /* Single column: the page scrolls again rather than cramming two internal scrollers
+     into a phone viewport. */
+  body { overflow: auto; block-size: auto; min-block-size: 100dvh; }
+  main { grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  .rail { border-inline-start: 0 !important; border-block-start: 1px solid var(--hair); overflow: visible; }
+  .actionbar { position: sticky; inset-block-end: 0; }
+}
+
+.rail {
+  min-inline-size: 0;
+  border-inline-start: 1px solid var(--hair);
+  padding: 14px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: color-mix(in oklab, var(--surface) 45%, transparent);
+}
+/* This line is the whole reason the panel list is reachable.
+ * A grid item with `overflow: hidden` (which .panel needs, for its rounded header) has an
+ * automatic minimum size of ZERO, so a definite-height grid row squashes the panel to fit
+ * and the content is then clipped with no scrollbar anywhere. Flex with an explicit
+ * flex-basis cannot shrink below its content, so the rail scrolls instead. */
+.rail > .panel { flex: 0 0 auto; }
+
+.panel { border: 1px solid var(--hair); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.panel > h2 {
+  margin: 0; padding: 10px 12px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; border-block-end: 1px solid var(--hair);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel > .body { padding: 12px; display: grid; gap: 10px; min-inline-size: 0; }
+.panel > .body > * { min-inline-size: 0; max-inline-size: 100%; }
+.panel select, .panel input[type="time"], .panel input[type="number"] { min-inline-size: 0; }
+.person-row { display: grid; gap: 5px; padding: 7px; border: 1px solid var(--hair); border-radius: 8px; overflow: hidden; }
+.person-row .top { display: flex; align-items: center; gap: 6px; min-inline-size: 0; }
+.person-row .top .nm { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-row .top select { flex: 0 0 auto; inline-size: 104px; font-size: 12px; padding: 3px 4px; }
+.person-row .top button { flex: 0 0 auto; }
+.person-row .city { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-row .hours { display: flex; gap: 5px; align-items: center; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
+.person-row .hours input[type="time"] { padding: 3px 4px; font-size: 11.5px; inline-size: 88px; }
+.person-row .hours input[type="number"] { inline-size: 46px; padding: 3px 4px; font-size: 11.5px; }
+.person-row .hours .arrow { opacity: 0.6; }
+
+/* ---------------------------------------------------------------- the grid */
+
+.gridwrap { overflow: auto; padding: 0 0 12px; position: relative; }
+
+.axis {
+  display: grid;
+  grid-template-columns: var(--label-w) 1fr;
+  position: sticky; inset-block-start: 0; z-index: 5;
+  background: color-mix(in oklab, var(--bg) 88%, transparent);
+  backdrop-filter: blur(6px);
+  border-block-end: 1px solid var(--hair-strong);
+}
+.axis .ruler {
+  position: relative; block-size: 30px;
+}
+.axis .ruler span {
+  position: absolute; inset-block-start: 7px; translate: -50% 0;
+  font: 11px var(--font-clock); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.axis .ruler span.major { color: var(--text); font-weight: 600; }
+.axis .who { padding-inline: 12px; padding-block: 7px; font-size: 11px; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.rows { position: relative; }
+/* Structural containers for a multi-day span. Declared explicitly rather than relying on
+   defaults: the span control can render up to seven of these stacked. */
+.daygroup { position: relative; }
+.axis.dayhead { position: relative; background: color-mix(in oklab, var(--surface) 55%, transparent); }
+.axis.dayhead .who { text-transform: uppercase; }
+
+.row {
+  display: grid;
+  grid-template-columns: var(--label-w) 1fr;
+  block-size: var(--row-h);
+  border-block-end: 1px solid var(--hair);
+  align-items: stretch;
+}
+.row:hover { background: color-mix(in oklab, var(--surface) 55%, transparent); }
+
+.rowlabel {
+  padding: 7px 12px; min-inline-size: 0;
+  display: grid; gap: 1px; align-content: center;
+  border-inline-end: 1px solid var(--hair);
+  position: sticky; inset-inline-start: 0; z-index: 3;
+  background: var(--bg);
+}
+.rowlabel .n { font-weight: 600; font-size: 13px; overflow: hidden; white-space: nowrap; display: flex; gap: 5px; align-items: center; min-inline-size: 0; }
+.rowlabel .n .nm { overflow: hidden; text-overflow: ellipsis; }
+.rowlabel .m { font-size: 11px; color: var(--muted); display: flex; gap: 5px; align-items: center; white-space: nowrap; overflow: hidden; }
+.rowlabel .m .work { overflow: hidden; text-overflow: ellipsis; }
+.rowlabel .m .tz { font-family: var(--font-clock); }
+.rowlabel .role { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 3px; padding: 0 3px; flex: none; }
+.rowlabel .role.organizer { color: var(--working); border-color: color-mix(in oklab, var(--working) 45%, transparent); }
+
+.band {
+  position: relative;
+  /* The whole availability band is ONE element painted by a CSS gradient built in JS.
+     Dragging never touches this node - that is what keeps the pointer at 60fps. */
+  background-image: var(--bands, none);
+  background-repeat: no-repeat;
+  margin-block: 8px 22px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  outline: 1px solid var(--hair);
+  outline-offset: -1px;
+}
+.band .weekend {
+  /* One hatch layer for the whole band, masked to the weekend ranges - a per-band child
+     element per weekend stretch would mean hundreds of nodes on a 20-person roster. */
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--text) 15%, transparent) 0 2px, transparent 2px 6px);
+  pointer-events: none;
+  -webkit-mask-image: var(--weekmask, none);
+  mask-image: var(--weekmask, none);
+}
+.band .local {
+  /* Deliberately outside the band box: printed on top of the fills these measured 1.5:1
+     against working teal. In the gutter under the band they are on the page background. */
+  position: absolute; inset-block-end: -17px; inline-size: 0;
+  font: 9.5px/1 var(--font-clock); color: var(--faint); translate: -50% 0;
+  pointer-events: none; user-select: none;
+}
+.band .mark { position: absolute; inset-block: 0; inline-size: 0; pointer-events: none; }
+.band .mark.midnight { border-inline-start: 2px solid var(--hair-strong); }
+.band .mark.sun {
+  color: oklch(22% 0.04 85); font: 700 9px/1 var(--font-clock); translate: -50% 0; inset-block-start: 2px;
+  background: color-mix(in oklab, var(--shoulder) 80%, transparent); border-radius: 3px; padding: 1px 2px;
+}
+.band .mark.now { border-inline-start: 2px solid var(--select); box-shadow: 0 0 8px var(--select); }
+.band .mark.dst { border-inline-start: 2px dashed var(--danger); }
+
+.overlay {
+  /* inset-inline-end is load-bearing: without it this box shrinks to zero width and
+     every percentage offset inside it resolves against nothing. */
+  position: absolute; inset-inline: var(--label-w) 0; inset-block: 0;
+  pointer-events: none; z-index: 4;
+}
+.sel {
+  position: absolute; inset-block: 0; pointer-events: auto;
+  border-inline: 2px solid var(--select);
+  background: color-mix(in oklab, var(--select) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--select) 30%, transparent);
+  cursor: grab; touch-action: none;
+}
+.sel.dragging { cursor: grabbing; }
+.sel .grip { position: absolute; inset-block: 0; inline-size: 10px; cursor: ew-resize; }
+.sel .grip.start { inset-inline-start: -5px; }
+.sel .grip.end { inset-inline-start: calc(100% - 5px); }
+.sel .tag { display: none; }
+
+/* The label lives in the sticky ruler: the column it describes is as tall as the roster
+   and scrolls away, but the time you are aiming at must never scroll out of view. */
+.selmark {
+  position: absolute; inset-block-start: 3px; block-size: 22px;
+  border: 1px solid var(--select); border-radius: 5px;
+  /* Opaque: a translucent chip let the ruler's hour digits read through the time. */
+  background: color-mix(in oklab, var(--select) 30%, var(--bg));
+  display: flex; align-items: center; justify-content: center;
+  font: 600 11px var(--font-clock); color: var(--text);
+  white-space: nowrap; overflow: hidden; pointer-events: none;
+}
+.selmark.tight { color: transparent; overflow: visible; }
+/* A 30-minute window is ~16px wide - the label goes outside the bracket rather than being
+   clipped to three characters of it. */
+.selmark.tight::after {
+  content: attr(data-t); position: absolute; inset-inline-start: calc(100% + 7px); inset-block-start: 4px;
+  color: var(--select); font-weight: 700; background: var(--bg); padding-inline: 3px; border-radius: 3px;
+}
+/* Late in the day the label would run past the edge of the grid and be clipped, so it
+   flips to the leading side instead. */
+.selmark.tight.left::after { inset-inline-start: auto; inset-inline-end: calc(100% + 7px); }
+.crosshair { position: absolute; inset-block: 0; inline-size: 0; border-inline-start: 1px dashed var(--hair-strong); pointer-events: none; }
+
+/* No global "night side" overlay: the solar terminator lands at a different x for every
+   row, because every row is a different zone. A single gradient across all rows would be
+   decoration that looks like data. Sunrise/sunset glyphs per row say it truthfully. */
+
+.overlay {
+  /* inset-inline-end is load-bearing: without it this box shrinks to zero width and
+     every percentage offset inside it resolves against nothing. */
+  position: absolute; inset-inline: var(--label-w) 0; inset-block: 0;
+  pointer-events: none; z-index: 4;
+}
+.sel {
+  position: absolute; inset-block: 0; pointer-events: auto;
+  border-inline: 2px solid var(--select);
+  background: color-mix(in oklab, var(--select) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--select) 30%, transparent);
+  cursor: grab; touch-action: none;
+}
+.sel.dragging { cursor: grabbing; }
+.sel .grip { position: absolute; inset-block: 0; inline-size: 10px; cursor: ew-resize; }
+.sel .grip.start { inset-inline-start: -5px; }
+.sel .grip.end { inset-inline-start: calc(100% - 5px); }
+.sel .tag { display: none; }
+
+/* The label lives in the sticky ruler: the column it describes is as tall as the roster
+   and scrolls away, but the time you are aiming at must never scroll out of view. */
+.selmark {
+  position: absolute; inset-block-start: 3px; block-size: 22px;
+  border: 1px solid var(--select); border-radius: 5px;
+  /* Opaque: a translucent chip let the ruler's hour digits read through the time. */
+  background: color-mix(in oklab, var(--select) 30%, var(--bg));
+  display: flex; align-items: center; justify-content: center;
+  font: 600 11px var(--font-clock); color: var(--text);
+  white-space: nowrap; overflow: hidden; pointer-events: none;
+}
+.selmark.tight { color: transparent; overflow: visible; }
+/* A 30-minute window is ~16px wide - the label goes outside the bracket rather than being
+   clipped to three characters of it. */
+.selmark.tight::after {
+  content: attr(data-t); position: absolute; inset-inline-start: calc(100% + 7px); inset-block-start: 4px;
+  color: var(--select); font-weight: 700; background: var(--bg); padding-inline: 3px; border-radius: 3px;
+}
+/* Late in the day the label would run past the edge of the grid and be clipped, so it
+   flips to the leading side instead. */
+.selmark.tight.left::after { inset-inline-start: auto; inset-inline-end: calc(100% + 7px); }
+.crosshair { position: absolute; inset-block: 0; inline-size: 0; border-inline-start: 1px dashed var(--hair-strong); pointer-events: none; }
+
+.shadow {
+  position: absolute; inset-inline: var(--label-w) 0; inset-block: 30px 0;
+  pointer-events: none; z-index: 1;
+  background-image: var(--shadow, none);
+  opacity: 0.45;
+  mix-blend-mode: multiply;
+  border-radius: 4px;
+}
+/* Night must darken in both themes. `screen` with a near-black colour is a no-op, which is
+   why the terminator never showed in dark mode. */
+:root[data-theme="dark"] .shadow, :root:not([data-theme]) .shadow { opacity: 0.85; }
+
+/* quality legend + glyph vocabulary: colour is never the only signal */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 8px 16px; color: var(--muted); font-size: 12px; border-block-start: 1px solid var(--hair); }
+.legend i { display: inline-block; inline-size: 11px; block-size: 11px; border-radius: 3px; margin-inline-end: 5px; vertical-align: -1px; }
+.legend .q-working { background: var(--working); }
+.legend .q-shoulder { background: var(--shoulder); }
+.legend .q-offhours { background: var(--offhours); }
+.legend .q-asleep { background: var(--asleep); }
+
+/* ---------------------------------------------------------------- slots */
+
+.slot {
+  display: grid; gap: 3px; padding: 9px 10px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--hair); background: var(--surface-2);
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.slot:hover { border-color: var(--select); }
+.slot[aria-current="true"] { border-color: var(--select); background: color-mix(in oklab, var(--surface-2) 65%, var(--select) 18%); }
+.slot .top { display: flex; align-items: baseline; gap: 8px; }
+.slot .t { font: 600 14px var(--font-clock); }
+.slot .score { margin-inline-start: auto; font: 700 12px var(--font-clock); color: var(--muted); }
+.slot .sub { font-size: 11.5px; color: var(--muted); }
+.slot .why { font-size: 11.5px; color: var(--danger); }
+
+.counts { display: inline-flex; gap: 7px; font: 11.5px var(--font-clock); }
+.counts b { font-weight: 600; }
+/* These four are 12px text, so they use the text variants: the band fills are tuned for
+   large areas and are unreadable as small type, and "off hours" was grey while the band
+   next to it was slate - two metaphors for one state. */
+.c-ok { color: var(--working-text); }
+.c-tight { color: var(--shoulder-text); }
+.c-hard { color: var(--off-text); }
+.c-bad { color: var(--asleep-text); }
+
+.meter { block-size: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--hair); }
+.meter i { display: block; block-size: 100%; background: linear-gradient(90deg, var(--danger), var(--shoulder), var(--working)); }
+
+/* ---------------------------------------------------------------- verdict bar */
+
+.actionbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; border-block-start: 1px solid var(--hair-strong);
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  backdrop-filter: blur(8px);
+}
+.actionbar .big { font: 600 15px var(--font-clock); }
+.actionbar .sub { font-size: 12px; color: var(--muted); }
+
+/* ---------------------------------------------------------------- palette */
+
+.palette {
+  position: fixed; inset: 0; z-index: 60; display: none;
+  background: rgba(6, 8, 14, 0.55); backdrop-filter: blur(3px);
+  align-items: start; justify-content: center; padding-block-start: 12vh;
+}
+.palette[data-open] { display: flex; }
+.palette .box {
+  inline-size: min(680px, 92vw); background: var(--surface); border: 1px solid var(--hair-strong);
+  border-radius: 14px; overflow: hidden; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+}
+.palette input {
+  inline-size: 100%; border: 0; border-block-end: 1px solid var(--hair);
+  background: transparent; padding: 15px 16px; font-size: 16px; outline: none;
+}
+.palette ol { list-style: none; margin: 0; padding: 0; max-block-size: 52vh; overflow: auto; }
+.palette li { padding: 9px 16px; display: grid; grid-template-columns: 1fr auto auto; gap: 10px; cursor: pointer; align-items: center; }
+.palette li[aria-selected="true"] { background: color-mix(in oklab, var(--surface-2) 60%, var(--select) 20%); }
+.palette li .nm { font-weight: 550; }
+.palette li .nm small { color: var(--muted); font-weight: 400; margin-inline-start: 6px; }
+.palette li .lt { font: 12.5px var(--font-clock); color: var(--text); }
+.palette li .z { font: 11px var(--font-clock); color: var(--faint); }
+.palette .hint { padding: 8px 16px; font-size: 11.5px; color: var(--faint); border-block-start: 1px solid var(--hair); display: flex; gap: 14px; }
+
+/* ---------------------------------------------------------------- sheet */
+
+.sheet { position: fixed; inset: 0; z-index: 70; display: none; align-items: end; justify-content: center; background: rgba(6,8,14,.55); }
+.sheet[data-open] { display: flex; }
+.sheet .box {
+  inline-size: min(720px, 96vw); background: var(--surface); border: 1px solid var(--hair-strong);
+  border-radius: 16px 16px 0 0; padding: 16px; display: grid; gap: 12px;
+}
+.times { display: grid; gap: 6px; }
+.times .r { display: grid; grid-template-columns: 1.1fr auto auto; gap: 10px; align-items: baseline; padding: 6px 9px; border-radius: 7px; background: var(--surface-2); }
+.times .r .who { font-weight: 600; }
+.times .r .when { font: 13px var(--font-clock); }
+.times .r .q { font-size: 11px; }
+.times .r.bad { outline: 1px solid var(--danger); }
+textarea { inline-size: 100%; min-block-size: 84px; background: var(--surface-2); border: 1px solid var(--hair); border-radius: 8px; padding: 9px; font: 12.5px var(--font-clock); resize: vertical; }
+
+/* ---------------------------------------------------------------- misc */
+
+.toast {
+  position: fixed; inset-block-end: 78px; inset-inline-start: 50%; translate: -50% 0;
+  background: var(--surface-2); border: 1px solid var(--hair-strong); border-radius: 10px;
+  padding: 9px 15px; z-index: 80; box-shadow: 0 12px 40px -12px rgba(0,0,0,.6);
+  animation: pop var(--dur) var(--ease);
+}
+@keyframes pop { from { opacity: 0; translate: -50% 8px; } }
+
+.empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+.empty h3 { margin: 0 0 6px; color: var(--text); font-size: 16px; }
+
+.visually-hidden {
+  position: absolute !important; inline-size: 1px; block-size: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+[aria-live="polite"].visually-hidden { position: fixed; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Forced-colors: fills carry no meaning there, so outline the bands and keep the glyphs. */
+@media (forced-colors: active) {
+  .band { forced-color-adjust: none; background-image: none !important; outline: 2px solid CanvasText; }
+  .sel { border-color: Highlight; }
+}
+
+@media (max-width: 720px) {
+  :root { --label-w: 128px; --row-h: 62px; }
+  main { grid-template-columns: minmax(0, 1fr); }
+  .rowlabel .m .work { display: none; }
+}
