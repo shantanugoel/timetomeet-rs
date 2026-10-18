@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The app is one page: every plan lives in the URL fragment, which crawlers do not send to
+  the server and which must not be indexed anyway (it is somebody's private meeting state).
+  So this lists exactly what should be indexed, and that is the whole point - the sitemap
+  referenced by robots.txt has to exist, and it must not imply there are more pages.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://timetomeet.shantanugoel.com/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

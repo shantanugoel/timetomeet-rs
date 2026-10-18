@@ -32,6 +32,7 @@ cargo run -q --release -p tt-dataset -- \
 
 say "contracts"
 node tools/check-styles.mjs
+node tools/check-contrast.mjs
 node tools/check-wasm-abi.mjs
 
 # Content-addressed asset version. It has to cover the *built* artefacts, not just the
@@ -53,6 +54,10 @@ printf 'APP_VERSION=%s\n' "$APP_VERSION" > "$DIST/version.txt"
 # The service worker must change identity when the bundle does, or a stale cache outlives
 # the deploy that fixed it.
 find "$DIST" -type f \( -name '*.html' -o -name '*.js' -o -name '*.webmanifest' \) -exec sed -i "s/APP_VERSION/$APP_VERSION/g" {} +
+
+# The automatic light theme is derived from the explicit one, so the two cannot drift.
+node tools/gen-auto-theme.mjs --write "$DIST/style/app.css"
+node tools/gen-auto-theme.mjs --check "$DIST/style/app.css"
 
 # The version goes into the filename, not the query string: Cloudflare's cache key is
 # host+path and ignores the query, so ?v= does nothing at the edge and an immutable asset

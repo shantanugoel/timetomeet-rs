@@ -1,15 +1,25 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-booting>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Time to Meet — find a time that works for everyone</title>
 <meta name="description" content="Plan a meeting across timezones. Colour-coded working hours, ranked fair slots, one-click calendar invite. Runs entirely in your browser.">
 <meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#0d1017">
-<meta name="og:title" content="Time to Meet">
-<meta name="og:description" content="Colour-coded working hours, ranked fair slots, one-click invite.">
-<meta name="og:type" content="website">
+<meta name="theme-color" content="#0d1017" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="https://timetomeet.shantanugoel.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Time to Meet">
+<meta property="og:url" content="https://timetomeet.shantanugoel.com/">
+<meta property="og:title" content="Time to Meet — find a time that works for everyone">
+<meta property="og:description" content="Colour-coded working hours, ranked fair slots, one-click calendar invite. Runs entirely in your browser.">
+<meta property="og:image" content="https://timetomeet.shantanugoel.com/og.png">
+<meta property="og:image:alt" content="A timezone grid: four people's working hours as coloured bands across a 24-hour day, with one selected meeting window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Time to Meet">
+<meta name="twitter:description" content="Colour-coded working hours, ranked fair slots, one-click calendar invite.">
+<meta name="twitter:image" content="https://timetomeet.shantanugoel.com/og.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -39,7 +49,7 @@
   <span class="spacer"></span>
 
   <span class="chip" id="viewerChip" title="Your timezone — click to change">
-    <span id="viewerTzLabel">detecting…</span>
+    <span id="viewerTzLabel">···</span>
   </span>
   <button class="btn ghost" id="viewToggle" title="Switch between the planning grid and the team roster">Roster</button>
   <button class="btn ghost" id="themeBtn" title="Theme" aria-label="Toggle theme"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button>
@@ -73,7 +83,7 @@
   </div>
 
   <span class="spacer"></span>
-  <span class="clock" id="nowClock" aria-label="Current time in your timezone"></span>
+  <time class="clock" id="nowClock" role="timer" aria-label="Current time in your timezone"></time>
 </div>
 
 <main>
@@ -83,6 +93,7 @@
       <div class="ruler" id="ruler"></div>
     </div>
     <div class="rows" id="rows">
+      <p class="empty" id="booting">Loading the timezone engine…<br><small class="faint-sm">Your timezone is detected automatically · everything runs locally, nothing is uploaded.</small></p>
       <div class="overlay" id="overlay"></div>
     </div>
     <div class="legend" aria-hidden="true">
@@ -102,20 +113,20 @@
 
   <aside class="rail">
     <div class="panel">
-      <h2>People <span class="spacer"></span><button class="btn ghost" id="addBtn" style="padding:2px 9px" aria-label="Add person">+</button></h2>
+      <h2>People <span class="spacer"></span><button class="btn ghost" id="addBtn" class="btn ghost mini" aria-label="Add person">+</button></h2>
       <div class="body" id="peopleList"></div>
     </div>
 
     <div class="panel" id="rail_slots">
-      <h2>Best slots <span id="slotsFor" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <h2>Best slots <span id="slotsFor" class="for"></span></h2>
       <div class="body" id="slotList"></div>
     </div>
 
     <div class="panel">
       <h2>Fairness</h2>
       <div class="body">
-        <div class="meter" aria-hidden="true"><i id="fairMeter" style="width:0%"></i></div>
-        <div id="fairText" style="font-size:12px;color:var(--muted)">Pick a slot to see who carries the cost.</div>
+        <div class="meter" aria-hidden="true"><i id="fairMeter"></i></div>
+        <div id="fairText" class="fairtext">Pick a slot to see who carries the cost.</div>
       </div>
     </div>
   </aside>
@@ -137,8 +148,8 @@
 <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Add a person">
   <div class="box">
     <input type="text" id="q" placeholder="City, airport code or timezone - try blr, sfo, Dublin"
-           autocomplete="off" spellcheck="false" aria-controls="results">
-    <ol id="results"></ol>
+           autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
+    <ol id="results" role="listbox" aria-label="Matching places"></ol>
     <div class="hint">
       <span><b>↑↓</b> move</span><span><b>⏎</b> add</span><span><b>⇧⏎</b> replace all</span><span><b>esc</b> close</span>
       <span class="spacer"></span><span id="dsState"></span>
@@ -148,15 +159,15 @@
 
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Share this slot">
   <div class="box">
-    <div style="display:flex;align-items:center;gap:10px">
+    <div class="sheetrow">
       <b id="sheetTitle">Slot</b><span class="spacer"></span>
       <button class="btn ghost" id="sheetClose" aria-label="Close">✕ close</button>
     </div>
     <div class="times" id="sheetTimes"></div>
-    <label style="font-size:12px;color:var(--muted)">Meeting title
-      <input type="text" id="sheetSummary" placeholder="Weekly sync" style="inline-size:100%;margin-block-start:4px">
+    <label class="sheetfield">Meeting title
+      <input type="text" id="sheetSummary" placeholder="Weekly sync">
     </label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="sheetactions">
       <button class="btn primary" id="sheetIcs"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M2.5 12.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Download .ics</button>
       <button class="btn" id="sheetCopyText"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 4h11M2.5 8h8M2.5 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Copy plain text</button>
       <button class="btn" id="sheetCopyLink"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5 9.5 6.5M5.2 7.1 3.8 8.5a2.6 2.6 0 0 0 3.7 3.7l1.4-1.4M10.8 8.9l1.4-1.4a2.6 2.6 0 0 0-3.7-3.7L7.1 5.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Copy link</button>
@@ -168,38 +179,6 @@
 
 <div class="visually-hidden" role="status" aria-live="polite" id="live"></div>
 
-<script>
-/* Wasm-free first paint.
- *
- * The engine is ~157 KB of wasm and the city index is lazy-loaded, so the shell must be
- * useful before either arrives: we detect the visitor's timezone, print the date, and say
- * what is happening. This block is ~1 KB, runs inline, and touches no module. */
-(function () {
-  var tz = 'UTC';
-  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
-  var now = new Date();
-  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-  var iso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-
-  var el = document.getElementById('viewerTzLabel');
-  if (el) el.textContent = tz;
-  var d = document.getElementById('dateInput');
-  if (d) { d.value = iso; d.min = '1970-01-01'; }
-  var c = document.getElementById('nowClock');
-  if (c) c.textContent = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now);
-  var rows = document.getElementById('rows');
-  if (rows) {
-    var p = document.createElement('p');
-    p.className = 'empty';
-    p.id = 'booting';
-    p.innerHTML = 'Loading the timezone engine…<br><small style="color:var(--faint)">Your timezone: ' + tz +
-                  ' · everything runs locally, nothing is uploaded.</small>';
-    rows.appendChild(p);
-  }
-  document.documentElement.dataset.theme = localStorage.getItem('tt-theme') ||
-    (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-})();
-</script>
 <script type="module" src="/js/app.js?v=APP_VERSION"></script>
 </body>
 </html>

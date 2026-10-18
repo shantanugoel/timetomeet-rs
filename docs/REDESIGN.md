@@ -893,8 +893,106 @@ Two traps found on the way, both invisible in a desktop screenshot:
    box. Nothing here is believed unless the probe could have failed.
 - `Asia/Calcutta` is shown as typed rather than normalised to `Asia/Kolkata`.
 
-## What the guard is for
+## Audit round 2 — PWA, SEO, Lighthouse (post-cutover)
 
-`docs/index.html` still carries the date-input stopgap on production. It is deleted by the
-cutover commit, not before: it is the only thing standing between a mistyped date and a
-permanently dead page for every visitor until DNS moves.
+The ask was "check SEO, PWA and Lighthouse". Six of the seven findings were things that
+looked finished and were not, and none of them were visible in a screenshot.
+
+**1. There was no offline support at all.** `sw.js` was written, deployed, tested by the
+smoke suite as "served with the right headers" — and nothing ever called
+`navigator.serviceWorker.register()`. `getRegistrations()` returned `[]` on production. The
+app now registers after `load` (never competing with first paint) on a secure context only,
+and the fetch handler gained a navigation fallback: an offline deep link resolves to the
+cached `/`, which is correct because the state lives in the fragment and fragments are never
+sent to the server. Verified with the network genuinely off, dataset included.
+
+**2. The boot script had never run in production.** CSP is `script-src 'self'
+'wasm-unsafe-eval'` with no `'unsafe-inline'`, so the 1 KB inline block — timezone label,
+date field, clock, "loading the engine" message — was refused on every load. The timezone
+chip read "detecting…" for every visitor ever. It looked fine locally because `serve.mjs`
+does not send the header that kills it. The block is gone: the placeholder is static markup
+(a placeholder that needs JavaScript is not a placeholder) and the label is written by
+`paintRows`, which already knows the timezone. `check-styles.mjs` now fails the build on an
+inline `<script>` in any HTML file, and `smoke.mjs` asserts it against the deployed bytes.
+
+**3. Two hand-copied light palettes had drifted apart.** Besides
+`:root[data-theme="light"]` there was a second copy under
+`@media (prefers-color-scheme: light) :root:not([data-theme])`. It was missing `--active`
+and `--danger`, so visitors who never touched the theme button — every first-time visitor,
+and every Lighthouse run — got selected rows with *no background* and danger text at 3.10:1.
+A token that exists in one selector and not the other is invisible to any test that sets
+`data-theme`, so the fix could not be "remember both". `tools/gen-auto-theme.mjs` now derives
+the automatic block from the explicit one at build time, and `check-contrast.mjs` refuses any
+custom property inside a `@media (prefers-color-scheme)` block.
+
+**4. `--on-primary` existed only in the light theme.** An undefined custom property makes
+`color: var(--on-primary)` inherit, so dark-mode primary buttons and the selected duration
+chip were near-white text on a pale cyan — roughly 1.3:1. Same class of bug for `#fff` on
+`--danger` (3.51:1 in dark). Both themes now define `--on-primary` and `--on-danger`.
+
+**5. `.palette li .z` measured 2.58:1 in dark, 3.79:1 in light** on the highlighted row. A
+full-page contrast walk had already been run and passed, because the palette is closed until
+a person opens it. Any audit of a UI with hidden states has to open the states.
+
+**6. CLS: 0.327 → 0.251 → 0.** Fixing one thing caused the second: the timezone chip went
+from `···` to `Asia/Calcutta`, which widened the toolbar enough to wrap a line on a phone and
+moved the whole grid. The label box is sized for the widest common zone now, so the text
+arrives without the layout noticing. Desktop still showed 0.0445 until Chrome's layout-shift
+`sources` revealed that my `html[data-booting]` reservations were *invented numbers*: 372 px
+reserved for a 240 px element, and a reservation that is too big shifts the page exactly as
+much as one that is too small. They are measured first-render heights now (240 / 198 / 445),
+and the residual for a shared link with more people is written down in the CSS comment rather
+than hidden.
+
+**7. ARIA that was decorative rather than correct.** `aria-label` on a generic `<span>`
+(prohibited), `aria-selected` on `<li>`s in a list that was never a listbox, no
+`aria-activedescendant` so a keyboard user never heard the highlighted result, and a legacy
+`aria-haspopup` that left axe unable to confirm `aria-controls` — reporting *incomplete*
+where it should report *pass*. axe is now at 0 violations, palette open and closed, in both
+themes.
+
+### tools/check-contrast.mjs
+
+Contrast had been asserted in comments and measured once by a throwaway script that got
+deleted. It is a build gate now: it resolves the colours the browser would actually paint —
+`oklch()`, `rgba()` composited over its background, `color-mix(in oklab, …)`, per theme —
+against 72 declared pairs, and refuses to pass if any token used for `color:` in the
+stylesheet is missing from the table. It carries its own tests, because a checker that
+cannot fail is decoration.
+
+Writing it taught me twice. Three of my own assertions were wrong: `oklch(50% 0 0)` is
+~`#656565`, not `#7f7f7f`, because Oklab's L is a cube root of a cone-response mix and is not
+CIE Y — so the tests are anchored to published Oklab values for `#f00` and `#00f` and to the
+fact that an oklab midpoint of black/white is not the naive RGB blend. And the tokenizer had
+to strip comments first, after a *comment* containing `--some-token: value` was parsed as a
+declaration and reported as a colour.
+
+### Verification lesson worth keeping
+
+Two consecutive measurements came back byte-identical after a CSS change, which read like the
+fix had failed. It had not: the testing browser had a service worker from an earlier visit and
+was serving the previous deploy from cache. Clear registrations and caches before measuring a
+deploy in a browser you have used before, or you are auditing the past.
+
+### Scores
+
+| | perf | a11y | BP | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| mobile (throttled) | 99 | 100 | 93 | 100 | 1.5 s | 1.5 s | 0 ms | 0.002 |
+| desktop | 100 | 100 | 93 | 100 | 0.5 s | 0.5 s | 0 ms | 0.008 |
+
+Also shipped this round: `sitemap.xml` (which `robots.txt` had been pointing at for a deploy
+while not existing), a 1200×630 `og.png` built from the real grid rather than a mockup,
+canonical + Open Graph + Twitter metadata, and a 404 page that says `noindex` instead of
+redirecting to the app and creating soft-404s.
+
+Still failing, with reasons:
+
+- **BP 93 / console errors** — Cloudflare injects its analytics beacon and Rocket Loader at
+  the edge, and our CSP refuses them. The fix is a dashboard toggle, not a wider CSP: the
+  whole pitch of this app is that nothing leaves the browser, so allowing
+  `static.cloudflareinsights.com` would be the wrong trade for a vanity score.
+- **Missing source maps** points at the 160 KB wasm, which has no JavaScript source to map.
+- **Forced reflow**, 9 ms, during wasm init.
+- **Network dependency tree**, informational: CSS → wasm glue, no preconnect needed for a
+  same-origin site.

@@ -20,7 +20,7 @@
   --hair: rgba(255, 255, 255, 0.07);
   --hair-strong: rgba(255, 255, 255, 0.16);
   --text: oklch(93% 0.01 265);
-  --muted: oklch(76% 0.02 265);
+  --muted: oklch(78% 0.02 265);
   --faint: oklch(64% 0.02 265);
 
   /* A luminance ramp, dark -> bright: asleep < off hours < shoulder < working. If two of
@@ -39,6 +39,16 @@
   --asleep-text: oklch(78% 0.13 20);
   --danger: oklch(65% 0.19 15);
   --select: oklch(88% 0.16 195);
+  /* Ink for text painted on --select. The dark theme's --select is a pale cyan, so the
+     ink has to be dark; it was defined only for light, and an undefined custom property
+     makes `color: var(--on-primary)` inherit - near-white labels on near-white chips. */
+  --on-primary: oklch(24% 0.06 235);
+  /* Same reasoning as --on-primary: the delete glyph sat #fff on a 65% red, 3.51:1. */
+  --on-danger: oklch(18% 0.06 18);
+  /* Background for the highlighted row/slot. Mixing --select into a surface looked right
+     and put secondary text at 2.58:1; this is picked so --text, --muted and --faint all
+     clear 4.5 on it in both themes. */
+  --active: oklch(31% 0.045 232);
 
   --label-w: 196px;
   --row-h: 60px;
@@ -60,7 +70,7 @@
   --hair: rgba(12, 16, 30, 0.09);
   --hair-strong: rgba(12, 16, 30, 0.2);
   --text: oklch(23% 0.02 265);
-  --muted: oklch(45% 0.02 265);
+  --muted: oklch(43.5% 0.02 265);
   --faint: oklch(50% 0.02 265);
 
   --working: oklch(56% 0.115 172);
@@ -73,32 +83,18 @@
   --off-text: var(--muted);
   --asleep-text: oklch(44% 0.19 25);
   --select: oklch(52% 0.15 220);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) { color-scheme: light;
-    --bg: oklch(98% 0.004 265);
-    --surface: oklch(95.5% 0.006 265);
-    --surface-2: oklch(92% 0.008 265);
-    --hair: rgba(12, 16, 30, 0.09);
-    --hair-strong: rgba(12, 16, 30, 0.2);
-    --text: oklch(23% 0.02 265);
-    --muted: oklch(45% 0.02 265);
-    --faint: oklch(50% 0.02 265);
-    --working: oklch(56% 0.115 172);
-    --shoulder: oklch(66% 0.14 68);
-    --offhours: oklch(80% 0.02 260);
-    --asleep: oklch(91% 0.045 295);
-    --band-edge: rgba(0, 0, 0, 0.34);
-    --working-text: oklch(43% 0.11 175);
-    --shoulder-text: oklch(45% 0.12 65);
-    --off-text: oklch(42% 0.02 265);
-    --asleep-text: oklch(44% 0.19 25);
-    --select: oklch(52% 0.15 220);
-  }
+  --on-primary: oklch(98% 0.01 235);
+  --on-danger: oklch(98% 0.01 20);
+  --active: oklch(92.5% 0.035 225);
+  --danger: oklch(48% 0.17 25);
 }
 
 * { box-sizing: border-box; }
+
+/* Reserve the scrollbar gutter. On a wide viewport the boot state is shorter than the
+   window, then the grid renders and a scrollbar appears - pushing every element sideways.
+   That was 0.046 CLS on desktop with nothing visibly wrong anywhere. */
+html { scrollbar-gutter: stable; }
 
 html, body {
   margin: 0;
@@ -150,7 +146,7 @@ header.bar {
 
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: -0.015em; }
 .brand svg { display: block; }
-.brand .mark { color: var(--working); }
+.brand .mark { color: var(--working); /* icon */ }
 
 .spacer { flex: 1 1 auto; }
 
@@ -162,10 +158,10 @@ header.bar {
 }
 .btn:hover { background: color-mix(in oklab, var(--surface-2) 60%, var(--select) 12%); }
 .btn:active { transform: translateY(1px); }
-.btn.primary { background: var(--select); color: oklch(18% 0.03 250); border-color: transparent; font-weight: 620; }
+.btn.primary { background: var(--select); color: var(--on-primary); border-color: transparent; font-weight: 620; }
 .btn.ghost { background: transparent; border-color: var(--hair); }
 .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
-.btn kbd { font: 11px var(--font-clock); opacity: 0.65; border: 1px solid var(--hair-strong); border-radius: 4px; padding: 0 4px; }
+.btn kbd { font: 12px var(--font-clock); opacity: 0.65; border: 1px solid var(--hair-strong); border-radius: 4px; padding: 0 4px; }
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
@@ -173,7 +169,13 @@ header.bar {
   font-size: 12.5px;
 }
 .chip .x { cursor: pointer; opacity: 0.55; padding: 0 2px; border-radius: 4px; }
-.chip .x:hover { opacity: 1; background: var(--danger); color: #fff; }
+/* The visitor's zone name arrives from JavaScript. With a content-sized box, "..." widening
+   to "Asia/Calcutta" made the toolbar wrap a line on a phone and moved everything below it:
+   one 0.25 CLS from three characters. The box is sized for the widest common zone instead,
+   so the text can arrive without the layout noticing; the chip's title carries the full
+   string when an exceptional name has to ellipsize. */
+#viewerTzLabel { display: inline-block; inline-size: 20ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.chip .x:hover { opacity: 1; background: var(--danger); color: var(--on-danger); }
 
 /* ---------------------------------------------------------------- toolbar */
 
@@ -188,7 +190,7 @@ header.bar {
   color: var(--muted); border-inline-end: 1px solid var(--hair);
 }
 .seg button:last-child { border-inline-end: 0; }
-.seg button[aria-pressed="true"] { background: var(--select); color: oklch(18% 0.03 250); font-weight: 620; }
+.seg button[aria-pressed="true"] { background: var(--select); color: var(--on-primary); font-weight: 620; }
 
 .field { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
 input[type="date"], input[type="time"], input[type="number"], input[type="text"], select {
@@ -251,10 +253,10 @@ main {
 .person-row .top .nm { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person-row .top select { flex: 0 0 auto; inline-size: 104px; font-size: 12px; padding: 3px 4px; }
 .person-row .top button { flex: 0 0 auto; }
-.person-row .city { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.person-row .hours { display: flex; gap: 5px; align-items: center; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
-.person-row .hours input[type="time"] { padding: 3px 4px; font-size: 11.5px; inline-size: 88px; }
-.person-row .hours input[type="number"] { inline-size: 46px; padding: 3px 4px; font-size: 11.5px; }
+.person-row .city { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-row .hours { display: flex; gap: 5px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.person-row .hours input[type="time"] { padding: 3px 4px; font-size: 12px; inline-size: 88px; }
+.person-row .hours input[type="number"] { inline-size: 52px; padding: 3px 4px; font-size: 12px; }
 .person-row .hours .arrow { opacity: 0.6; }
 
 /* ---------------------------------------------------------------- the grid */
@@ -277,7 +279,7 @@ main {
   font: 11px var(--font-clock); color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .axis .ruler span.major { color: var(--text); font-weight: 600; }
-.axis .who { padding-inline: 12px; padding-block: 7px; font-size: 11px; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
+.axis .who { padding-inline: 12px; padding-block: 7px; font-size: 12px; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
 
 .rows { position: relative; }
 /* Structural containers for a multi-day span. Declared explicitly rather than relying on
@@ -304,11 +306,11 @@ main {
 }
 .rowlabel .n { font-weight: 600; font-size: 13px; overflow: hidden; white-space: nowrap; display: flex; gap: 5px; align-items: center; min-inline-size: 0; }
 .rowlabel .n .nm { overflow: hidden; text-overflow: ellipsis; }
-.rowlabel .m { font-size: 11px; color: var(--muted); display: flex; gap: 5px; align-items: center; white-space: nowrap; overflow: hidden; }
+.rowlabel .m { font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; white-space: nowrap; overflow: hidden; }
 .rowlabel .m .work { overflow: hidden; text-overflow: ellipsis; }
 .rowlabel .m .tz { font-family: var(--font-clock); }
-.rowlabel .role { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 3px; padding: 0 3px; flex: none; }
-.rowlabel .role.organizer { color: var(--working); border-color: color-mix(in oklab, var(--working) 45%, transparent); }
+.rowlabel .role { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--hair); border-radius: 3px; padding: 0 3px; flex: none; }
+.rowlabel .role.organizer { color: var(--working-text); border-color: color-mix(in oklab, var(--working) 45%, transparent); }
 /* Their local time for the current selection, against the name. It is the answer to the
    one question this tool exists to answer, and the label column is the only thing that
    stays visible while the grid scrolls sideways. */
@@ -317,10 +319,10 @@ main {
   display: flex; gap: 4px; align-items: center; white-space: nowrap; overflow: hidden;
   min-inline-size: 0;
 }
-.rowlabel .mt:empty::before { content: "—"; color: var(--hair-strong); }
+.rowlabel .mt:empty::before { content: "—"; color: var(--faint); }
 .rowlabel .mt .dot { inline-size: 6px; block-size: 6px; border-radius: 2px; flex: none; background: currentColor; }
-.rowlabel .mt .d { font-size: 10px; color: var(--muted); }
-.rowlabel .mt .clip { font-size: 10px; color: var(--shoulder-text); }
+.rowlabel .mt .d { font-size: 11px; color: var(--muted); }
+.rowlabel .mt .clip { font-size: 11px; color: var(--shoulder-text); }
 .rowlabel .mt.q-working { color: var(--working-text); }
 .rowlabel .mt.q-shoulder { color: var(--shoulder-text); }
 .rowlabel .mt.q-offhours { color: var(--off-text); }
@@ -351,7 +353,9 @@ main {
   /* Deliberately outside the band box: printed on top of the fills these measured 1.5:1
      against working teal. In the gutter under the band they are on the page background. */
   position: absolute; inset-block-end: -17px; inline-size: 0;
-  font: 9.5px/1 var(--font-clock); color: var(--faint); translate: -50% 0;
+  /* Deliberately under the 12px Lighthouse asks for: 24 hour labels per row, and at
+     12px they collide on a phone. Density is derived from the measured width. */
+  font: 11px/1 var(--font-clock); color: var(--faint); translate: -50% 0;
   pointer-events: none; user-select: none;
 }
 .band .mark { position: absolute; inset-block: 0; inline-size: 0; pointer-events: none; }
@@ -479,14 +483,14 @@ main {
   transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 .slot:hover { border-color: var(--select); }
-.slot[aria-current="true"] { border-color: var(--select); background: color-mix(in oklab, var(--surface-2) 65%, var(--select) 18%); }
+.slot[aria-current="true"] { border-color: var(--select); background: var(--active); }
 .slot .top { display: flex; align-items: baseline; gap: 8px; }
 .slot .t { font: 600 14px var(--font-clock); }
 .slot .score { margin-inline-start: auto; font: 700 12px var(--font-clock); color: var(--muted); }
-.slot .sub { font-size: 11.5px; color: var(--muted); }
-.slot .why { font-size: 11.5px; color: var(--danger); }
+.slot .sub { font-size: 12px; color: var(--muted); }
+.slot .why { font-size: 12px; color: var(--danger); }
 
-.counts { display: inline-flex; gap: 7px; font: 11.5px var(--font-clock); }
+.counts { display: inline-flex; gap: 7px; font: 12px var(--font-clock); }
 .counts b { font-weight: 600; }
 /* These four are 12px text, so they use the text variants: the band fills are tuned for
    large areas and are unreadable as small type, and "off hours" was grey while the band
@@ -498,6 +502,64 @@ main {
 
 .meter { block-size: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--hair); }
 .meter i { display: block; block-size: 100%; background: linear-gradient(90deg, var(--danger), var(--shoulder), var(--working)); }
+
+/* Layout shift, reserved for. On mobile the rail is in document flow, so when wasm
+   answers the panels fill and the rail grows from nothing to ~1280px, dragging everything
+   below it down - that one element was the entire 0.33 CLS Lighthouse measured. The
+   numbers are the first-render heights measured in the browser at 1440x900, not estimates:
+   #rows is four default people at exactly --row-h (240), #slotList is six suggestions
+   (198), #peopleList is the same roster (445). A reservation that is too big shifts the
+   page too, when the content turns out to be shorter - which is what the old +132px for
+   the ruler and axis was doing, since those are siblings of #rows, not inside it.
+   A link with more people still grows once; that is the honest residual. */
+html[data-booting] #rows { min-block-size: calc(var(--row-h) * 4); }
+html[data-booting] #peopleList { min-block-size: 445px; }
+html[data-booting] #slotList { min-block-size: 198px; }
+
+/* Same problem, sideways: the verdict counts are written by the engine, and the bar grew
+   from nothing to 194px, sliding the buttons next to it 147px to the right in the
+   viewport. The box is sized for the sentence before the sentence exists. */
+#selCounts { min-inline-size: 200px; }
+
+/* Everything here replaces an inline style attribute.
+ *
+ * CSP is `style-src 'self'`, which drops the style *attribute* while still allowing CSSOM
+ * setters (`el.style.width = …` keeps working). So an inline style is not a shortcut: it is
+ * a declaration that never applies in production, plus a console violation nobody reads.
+ * That shipped 22 times here before Lighthouse counted them - 58 violations, and empty
+ * states, the people editor's inputs and the 404 page rendered unstyled.
+ * tools/check-styles.mjs fails the build on `style="` and `style.cssText` so it cannot come
+ * back. Inline *sizing* set from script stays, because that path is allowed and is the only
+ * way to express a measured width.
+ */
+.btn.mini { padding: 2px 9px; }
+.btn.mini.tight { padding: 2px 7px; }
+.panel > h2 .for { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.meter i { inline-size: 0; }
+.fairtext { font-size: 12px; color: var(--muted); }
+.sheetrow { display: flex; align-items: center; gap: 10px; }
+.sheetfield { display: block; font-size: 12px; color: var(--muted); }
+.sheetfield input { display: block; inline-size: 100%; margin-block-start: 4px; }
+.sheetactions { display: flex; gap: 8px; flex-wrap: wrap; }
+.faint-sm { color: var(--faint); }
+.empty.tight { padding: 12px 16px; }
+.empty.note { padding: 6px 16px; text-align: start; font-size: 12px; color: var(--danger); }
+.empty.banner {
+  padding: 10px 16px; text-align: start; border-block-end: 1px solid var(--hair);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+input.timefield { padding: 3px 5px; }
+input.numfield { inline-size: 58px; padding: 3px 5px; }
+#results .none { color: var(--muted); padding: 10px 12px; }
+.centerstage {
+  min-block-size: 100dvh; display: grid; place-content: center; gap: 14px;
+  padding: 2rem; text-align: center;
+}
+.centerstage svg { color: var(--faint); justify-self: center; }
+.centerstage h1 { margin: 0; font-size: 19px; }
+.centerstage p { margin: 0; color: var(--muted); font-size: 14px; max-inline-size: 38ch; }
+.centerstage .cta { margin-block-start: 6px; }
+.centerstage .cta a { text-decoration: none; }
 
 /* ---------------------------------------------------------------- verdict bar */
 
@@ -528,12 +590,14 @@ main {
 }
 .palette ol { list-style: none; margin: 0; padding: 0; max-block-size: 52vh; overflow: auto; }
 .palette li { padding: 9px 16px; display: grid; grid-template-columns: 1fr auto auto; gap: 10px; cursor: pointer; align-items: center; }
-.palette li[aria-selected="true"] { background: color-mix(in oklab, var(--surface-2) 60%, var(--select) 20%); }
+.palette li[aria-selected="true"] { background: var(--active); }
 .palette li .nm { font-weight: 550; }
 .palette li .nm small { color: var(--muted); font-weight: 400; margin-inline-start: 6px; }
 .palette li .lt { font: 12.5px var(--font-clock); color: var(--text); }
-.palette li .z { font: 11px var(--font-clock); color: var(--faint); }
-.palette .hint { padding: 8px 16px; font-size: 11.5px; color: var(--faint); border-block-start: 1px solid var(--hair); display: flex; gap: 14px; }
+/* --faint here measured 2.58:1 on the highlighted row. The zone string is tertiary, but
+   11px mono at that ratio is not tertiary, it is invisible. */
+.palette li .z { font: 11px var(--font-clock); color: var(--muted); }
+.palette .hint { padding: 8px 16px; font-size: 12px; color: var(--faint); border-block-start: 1px solid var(--hair); display: flex; gap: 14px; }
 
 /* ---------------------------------------------------------------- sheet */
 
@@ -547,7 +611,7 @@ main {
 .times .r { display: grid; grid-template-columns: 1.1fr auto auto; gap: 10px; align-items: baseline; padding: 6px 9px; border-radius: 7px; background: var(--surface-2); }
 .times .r .who { font-weight: 600; }
 .times .r .when { font: 13px var(--font-clock); }
-.times .r .q { font-size: 11px; }
+.times .r .q { font-size: 12px; }
 .times .r.bad { outline: 1px solid var(--danger); }
 textarea { inline-size: 100%; min-block-size: 84px; background: var(--surface-2); border: 1px solid var(--hair); border-radius: 8px; padding: 9px; font: 12.5px var(--font-clock); resize: vertical; }
 
@@ -582,13 +646,22 @@ textarea { inline-size: 100%; min-block-size: 84px; background: var(--surface-2)
 }
 
 @media (max-width: 720px) {
-  :root { --label-w: 128px; --row-h: 62px; }
+  :root { --label-w: 132px; --row-h: 62px; }
   main { grid-template-columns: minmax(0, 1fr); }
   .rowlabel .m .work { display: none; }
   /* The label column cannot grow much on a phone without eating the band it labels, so
      the meeting time gets a smaller face and the "minutes outside their window" marker -
      secondary, and still in the tooltip - gives up its space, same as the work window. */
   .rowlabel { padding-inline: 9px; }
-  .rowlabel .mt { font-size: 11px; gap: 3px; }
+  .rowlabel .mt { font-size: 12px; gap: 4px; }
   .rowlabel .mt .clip { display: none; }
+  /* Redundant with the text's own colour, and the first thing to go when the label column
+     has 132px to hold "00:00–01:00 Tue". */
+  .rowlabel .mt .dot { display: none; }
 }
+
+/* The automatic light theme is generated into dist by tools/gen-auto-theme.mjs from the
+   :root[data-theme="light"] block above. It is not written by hand: the second copy had
+   drifted until it was missing --active and --danger, which left selected rows with no
+   background and validation text at 3.10:1 - and only for visitors who never touched the
+   theme button, which is every first-time visitor and every Lighthouse run. */

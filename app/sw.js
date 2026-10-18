@@ -24,6 +24,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then((hit) => {
+      // Started before the hit is returned, so a cache hit is served immediately and the
+      // entry still refreshes for the next load - stale-while-revalidate, not cache-first.
       const fetched = fetch(req)
         .then((res) => {
           if (res && res.ok && res.type === 'basic') {
@@ -32,8 +34,17 @@ self.addEventListener('fetch', (e) => {
           }
           return res;
         })
-        .catch(() => hit);
-      return hit || fetched;
+        .catch(() => null);
+      if (hit) return hit;
+      return fetched.then((res) => {
+        if (res) return res;
+        // Offline and never seen this URL. For a navigation that means a deep link or a
+        // shared link typed on a plane: answer with the cached shell rather than the
+        // browser's dead-page screen. The app reads its state from the fragment, and a
+        // fragment is never sent to the server, so "/" is the right document for it.
+        if (req.mode === 'navigate') return caches.match('/', { ignoreSearch: true });
+        return res;
+      });
     })
   );
 });

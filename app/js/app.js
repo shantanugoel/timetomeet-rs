@@ -204,6 +204,18 @@ function paintRows() {
   measure();
   const rows = $('rows');
   rows.querySelector('#booting')?.remove();
+  // Was the inline boot script's job. CSP has no 'unsafe-inline', so that script never ran
+  // and the label read "detecting..." for every visitor; doing it here costs nothing, since
+  // this function already knows the timezone.
+  const tzLabel = $('viewerTzLabel');
+  if (tzLabel && tzLabel.textContent !== state.viewerTz) {
+    tzLabel.textContent = state.viewerTz;
+    // Long names ellipsize (the box is width-reserved against layout shift), so the full
+    // zone belongs somewhere a person can still read it.
+    tzLabel.closest('.chip')?.setAttribute('title', `${state.viewerTz} \u2014 click to change`);
+  }
+  // The grid now occupies what the boot state reserved (see html[data-booting]).
+  if (document.documentElement.dataset.booting !== undefined) delete document.documentElement.dataset.booting;
   rows.querySelectorAll('.daygroup, .axis.dayhead').forEach((n) => n.remove());
   if (!state.report?.days?.length) return;
 
@@ -222,8 +234,7 @@ function paintRows() {
     for (const row of day.rows) g.appendChild(rowNode(row));
     if (day.dst_zones.length) {
       const note = document.createElement('div');
-      note.className = 'empty';
-      note.style.cssText = 'padding:6px 16px;text-align:start;font-size:12px;color:var(--danger)';
+      note.className = 'empty note';
       note.textContent = `⚠ DST change on ${day.date_label} for ${day.dst_zones.join(', ')} — clocks shift relative to everyone else.`;
       g.appendChild(note);
     }
@@ -507,7 +518,7 @@ function paintSlots() {
   host.innerHTML = '';
   $('slotsFor').textContent = `· ${state.durationMin} min`;
   if (!state.slots.length) {
-    host.innerHTML = '<div class="empty" style="padding:12px">Add a person to get suggestions.</div>';
+    host.innerHTML = '<div class="empty tight">Add a person to get suggestions.</div>';
     return;
   }
   for (const s of state.slots) {
@@ -530,11 +541,23 @@ function paintSlots() {
   }
 }
 
+/// The button announces the mode it will move to, not the one you are in, so it stays
+/// true whatever decided the current theme - stored choice or system preference.
+function syncThemeBtn() {
+  const system = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  const current = document.documentElement.dataset.theme || system;
+  const next = current === 'dark' ? 'light' : 'dark';
+  const b = $('themeBtn');
+  if (!b) return;
+  b.title = `Switch to ${next} theme`;
+  b.setAttribute('aria-label', `Switch to ${next} theme`);
+}
+
 function paintPeople() {
   const host = $('peopleList');
   host.innerHTML = '';
   if (!state.people.length) {
-    host.innerHTML = `<div class="empty" style="padding:14px"><h3>Nobody yet</h3>Press <kbd>⌘K</kbd> to add someone.</div>`;
+    host.innerHTML = `<div class="empty tight"><h3>Nobody yet</h3>Press <kbd>⌘K</kbd> to add someone.</div>`;
     return;
   }
   state.people.forEach((p, i) => {
@@ -546,15 +569,15 @@ function paintPeople() {
          <select data-f="role" aria-label="Role">
            ${['organizer', 'required', 'optional', 'peripheral'].map((r) => `<option ${p.role === r ? 'selected' : ''}>${r}</option>`).join('')}
          </select>
-         <button class="btn ghost" data-f="rm" style="padding:2px 7px" aria-label="Remove ${esc(p.name)}">✕</button>
+         <button class="btn ghost mini tight" data-f="rm" aria-label="Remove ${esc(p.name)}">✕</button>
        </div>
        <div class="city clock">${esc(p.city)} · ${esc(p.tz)}</div>
        <div class="hours">
-         <input type="time" data-f="ws" value="${hm(p.work_start_min)}" step="900" aria-label="Work start" style="padding:3px 5px">
+         <input type="time" data-f="ws" value="${hm(p.work_start_min)}" step="900" aria-label="Work start" class="timefield">
          <span class="arrow">→</span>
-         <input type="time" data-f="we" value="${hm(p.work_end_min)}" step="900" aria-label="Work end" style="padding:3px 5px">
+         <input type="time" data-f="we" value="${hm(p.work_end_min)}" step="900" aria-label="Work end" class="timefield">
          <span title="Flexibility beyond the declared window">±</span>
-         <input type="number" data-f="fx" value="${p.flex_min}" min="0" max="240" step="15" style="inline-size:58px;padding:3px 5px" aria-label="Flex minutes">
+         <input type="number" data-f="fx" value="${p.flex_min}" min="0" max="240" step="15" class="numfield" aria-label="Flex minutes">
        </div>`;
     row.querySelector('.nm').textContent = p.name;
     row.addEventListener('change', (e) => {
@@ -594,8 +617,7 @@ async function paint({ slots = true } = {}) {
   if (restDay) {
     const b = document.createElement('div');
     b.id = 'restBanner';
-    b.className = 'empty';
-    b.style.cssText = 'padding:10px 16px;text-align:start;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-block-end:1px solid var(--hair)';
+    b.className = 'empty banner';
     b.innerHTML = `<span>Most of your team is <b>off</b> on ${esc(state.report.days[0].date_label)}. Suggestions reach into the next working day.</span>`;
     const jump = document.createElement('button');
     jump.className = 'btn';
@@ -639,6 +661,7 @@ let results = [], cursor = 0, dsLoading = false;
 
 async function openPalette() {
   $('palette').dataset.open = '';
+  syncActiveDescendant();
   $('q').value = '';
   results = []; cursor = 0;
   $('results').innerHTML = '';
@@ -657,7 +680,7 @@ async function openPalette() {
     $('dsState').textContent = '';
   }
 }
-function closePalette() { delete $('palette').dataset.open; }
+function closePalette() { delete $('palette').dataset.open; syncActiveDescendant(); }
 
 async function runSearch() {
   const q = $('q').value.trim();
@@ -674,12 +697,13 @@ async function runSearch() {
     if (!items.some((i) => i.tz === q)) items.unshift(probe);
   }
   if (!items.length) {
-    host.innerHTML = `<li style="color:var(--muted)">No match. Type an IANA zone instead, e.g. <b>Asia/Colombo</b>.</li>`;
+    host.innerHTML = `<li role="presentation" class="none">No match. Type an IANA zone instead, e.g. <b>Asia/Colombo</b>.</li>`;
     return;
   }
   items.forEach((h, i) => {
     const li = document.createElement('li');
     li.setAttribute('role', 'option');
+    li.id = `res-${i}`;
     li.setAttribute('aria-selected', i === cursor ? 'true' : 'false');
     li.innerHTML = `<span class="nm"></span><span class="lt clock">${esc(h.local_time)} ${esc(h.local_date)}</span><span class="z">${esc(h.tz)}</span>`;
     li.querySelector('.nm').innerHTML = `${esc(h.name)}${h.country ? `<small>${esc(h.country)}</small>` : ''}`;
@@ -687,12 +711,26 @@ async function runSearch() {
     host.appendChild(li);
   });
   results = items;
+  syncActiveDescendant();
+}
+
+/// A combobox keeps focus in the field, so the listbox is announced through
+/// aria-activedescendant; without it a screen reader never hears the highlighted row.
+function syncActiveDescendant() {
+  const q = $('q');
+  if (!q) return;
+  const open = 'open' in $('palette').dataset && results.length > 0;
+  q.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const active = open && results[cursor] ? `res-${cursor}` : '';
+  if (active) q.setAttribute('aria-activedescendant', active);
+  else q.removeAttribute('aria-activedescendant');
 }
 
 function moveCursor(d) {
   if (!results.length) return;
   cursor = (cursor + d + results.length) % results.length;
   [...$('results').children].forEach((li, i) => li.setAttribute('aria-selected', i === cursor ? 'true' : 'false'));
+  syncActiveDescendant();
   $('results').children[cursor]?.scrollIntoView({ block: 'nearest' });
 }
 
@@ -844,10 +882,28 @@ async function boot() {
   $('addBtn').addEventListener('click', openPalette);
   $('groupBtn').addEventListener('click', groupMenu);
   $('themeBtn').addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    // With no stored choice the CSS media query decides, so the effective theme has to be
+    // read from the media query - `dataset.theme === 'dark'` is undefined there, which
+    // made the first click resolve to 'dark' and look dead.
+    const system = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    const current = document.documentElement.dataset.theme || system;
+    const next = current === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     localStorage.setItem(LS.theme, next);
+    syncThemeBtn();
   });
+  syncThemeBtn();
+
+  // The service worker is what makes this usable offline, and it sat unregistered for the
+  // whole rewrite: sw.js was written, deployed, and never once installed by anything. It
+  // registers after load so it never competes with the first paint, and only on a secure
+  // context (https, or localhost for development).
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => { /* offline is a bonus, not a dependency */ });
+    }, { once: true });
+  }
+
   $('helpBtn').addEventListener('click', () =>
     toast('⌘K add · ←/→ move slot · ⇧←/⇧→ by hour · +/- duration · T today · R roster · ? help'));
   $('viewToggle').addEventListener('click', () => setMode(state.mode === 'roster' ? 'plan' : 'roster'));

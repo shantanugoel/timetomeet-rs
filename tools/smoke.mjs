@@ -52,6 +52,8 @@ check('css path carries the version in the path', Boolean(cssPath) && cssPath.in
 check('index.html uses the versioned css', Boolean(cssPath) && html.includes(cssPath), cssPath || 'missing');
 check('index.html uses the versioned app.js', html.includes(assets['/js/app.js'] || '\u0000'), assets['/js/app.js'] || 'missing');
 check('no query-string versioning left in html', !/\?v=/.test(html), 'found ?v= in index.html');
+// CSP is script-src 'self': an inline script here would be a console error and a no-op.
+check('no inline scripts in html', !/<script(?![^>]*\ssrc=)[^>]*>/i.test(html), 'inline <script> present');
 
 for (const [logical, path] of Object.entries(assets)) {
   const r = await get(path);

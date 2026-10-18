@@ -1,7 +1,34 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Not found — Time to Meet</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="0; url=/"></head>
-<body style="font:15px system-ui;background:#0d1017;color:#e8eaf0;padding:3rem">
-<p>That page moved. <a href="/" style="color:#7dd3c0">Back to Time to Meet</a>.</p>
-</body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found — Time to Meet</title>
+<meta name="description" content="That page does not exist. Time to Meet is a single-page timezone planner.">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark light">
+<link rel="canonical" href="https://timetomeet.shantanugoel.com/">
+<link rel="stylesheet" href="/style/app.css">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<!--
+  No instant client-side redirect to "/". An auto-redirect makes this a soft 404: the
+  crawler is told the page is missing and then handed the homepage, which is the pattern
+  search engines flag as a soft 404 and which hides a real broken link from whoever sent
+  the visitor here. The link stays a link, so the visitor decides.
+-->
+<main class="centerstage">
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="1.6" opacity=".55"/>
+    <path d="M12 6.6V12l3.6 2.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  </svg>
+  <h1>No page here</h1>
+  <p>
+    Time to Meet is one page — a timezone grid. A meeting plan is not a URL, it is a
+    fragment, so there is nothing behind this address to find.
+  </p>
+  <p class="cta"><a class="btn" href="/">Plan a meeting</a></p>
+</main>
+</body>
+</html>
