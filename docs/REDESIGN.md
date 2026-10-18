@@ -988,10 +988,27 @@ redirecting to the app and creating soft-404s.
 
 Still failing, with reasons:
 
-- **BP 93 / console errors** — Cloudflare injects its analytics beacon and Rocket Loader at
-  the edge, and our CSP refuses them. The fix is a dashboard toggle, not a wider CSP: the
-  whole pitch of this app is that nothing leaves the browser, so allowing
-  `static.cloudflareinsights.com` would be the wrong trade for a vanity score.
+- **Console errors - fixed at the edge.** Cloudflare injects its analytics beacon and
+  Rocket Loader into HTML, and our CSP refuses both, which produced two console errors and
+  capped Best Practices at 93. The fix was a single zone-scoped **Configuration Rule** on
+  `http.host eq "timetomeet.shantanugoel.com"` with `rocket_loader: false` and
+  `disable_rum: true` - not a wider CSP. The whole pitch of this app is that nothing leaves
+  the browser, so whitelisting `static.cloudflareinsights.com` would have been the wrong
+  trade for a score. The docs even tell you to add their origin to your CSP; that is the
+  wrong direction for this site. BP is now 100 and the served HTML contains no injected
+  script at all.
+- **Browser Cache TTL was silently caching the HTML for five days.** The zone had
+  Caching → Configuration → Browser Cache TTL = 5 days, and Cloudflare overrides origin
+  headers whenever the origin's `max-age` is *lower* than that. So the immutable year on the
+  versioned assets was untouched while `/`, `/sw.js` and `/asset-manifest.json` - all
+  `max-age=0, must-revalidate` - were rewritten to `max-age=432000`. A returning visitor
+  could hold the previous deploy's HTML for five days, and Cloudflare's purge does nothing
+  about bytes already in a browser. Set to **Respect existing headers**, which is the correct
+  value for any origin that writes its own `Cache-Control`.
+
+  The reason this survived a green suite: **zone rules never apply to `*.pages.dev`**, and
+  every smoke run had been against the `pages.dev` apex. `deploy.sh` now smoke-tests the
+  custom domain as well, on the grounds that the two hostnames are two different tests.
 - **Missing source maps** points at the 160 KB wasm, which has no JavaScript source to map.
 - **Forced reflow**, 9 ms, during wasm init.
 - **Network dependency tree**, informational: CSS → wasm glue, no preconnect needed for a

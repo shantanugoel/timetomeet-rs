@@ -12,6 +12,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 PROJECT=timetomeet
+# The real hostname. Zone-level behaviour lives here and nowhere else: Browser Cache TTL,
+# Cache Rules and Configuration Rules never apply to *.pages.dev, so the deployment URL and
+# the domain are two different tests, not one test twice. A deploy passed 39/39 against
+# *.pages.dev while the domain was still serving `max-age=432000` for /sw.js, because
+# nothing had ever asked the domain.
+CUSTOM=https://timetomeet.shantanugoel.com
 BRANCH=preview
 [ "${1:-}" = "--prod" ] && BRANCH=main
 
@@ -33,6 +39,11 @@ if [ "$BRANCH" = main ]; then URL="https://$PROJECT-42n.pages.dev"; fi
 
 say "smoke-testing $URL"
 node tools/smoke.mjs "$URL"
+
+if [ "$BRANCH" = main ]; then
+  say "smoke-testing $CUSTOM"
+  node tools/smoke.mjs "$CUSTOM"
+fi
 
 say "done"
 if [ "$BRANCH" = preview ]; then
